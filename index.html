@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<title>Tienda interna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="avisos" aria-live="polite"></div>
+
+<!-- ══════════════ INGRESO ══════════════ -->
+<section id="pantalla-login" class="pantalla activa">
+  <div class="login-lienzo">
+    <div class="login-marca">
+      <div class="rayas" aria-hidden="true"></div>
+      <h1 id="marca-empresa">Tienda interna</h1>
+      <p class="login-bajada">Ingresa con tu número de identificación para comprar.</p>
+    </div>
+
+    <form id="form-login" class="tarjeta login-caja" autocomplete="off">
+      <label class="campo">
+        <span>Número de identificación</span>
+        <input id="login-cedula" type="text" inputmode="numeric" required autocomplete="username">
+      </label>
+      <label class="campo">
+        <span>Contraseña</span>
+        <input id="login-clave" type="password" required autocomplete="current-password">
+      </label>
+      <button class="btn btn-principal btn-grande" type="submit">Entrar</button>
+      <p class="nota" id="nota-admin"></p>
+    </form>
+  </div>
+</section>
+
+<!-- ══════════════ TIENDA ══════════════ -->
+<section id="pantalla-tienda" class="pantalla">
+  <header class="barra">
+    <div class="barra-izq">
+      <span class="eyebrow">Comprando como</span>
+      <strong id="tienda-usuario">—</strong>
+    </div>
+    <div class="barra-der">
+      <button class="btn btn-fantasma" id="btn-ir-admin" hidden>Administración</button>
+      <button class="btn btn-fantasma" id="btn-salir">Salir</button>
+    </div>
+  </header>
+
+  <main class="tienda-grid">
+    <div class="col-escaner">
+      <div class="escaner" id="escaner">
+        <div class="escaner-linea" aria-hidden="true"></div>
+        <label class="eyebrow" for="entrada-codigo">Pasa el producto por el lector</label>
+        <input id="entrada-codigo" class="entrada-codigo" type="text" autocomplete="off"
+               placeholder="Código de barras" aria-label="Código de barras">
+        <p class="escaner-pista">También puedes escribir el código y pulsar Enter.</p>
+      </div>
+
+      <div class="atajos" id="atajos"></div>
+    </div>
+
+    <div class="col-ticket">
+      <div class="ticket">
+        <div class="ticket-cab">
+          <span class="eyebrow">Tu pedido</span>
+          <button class="btn btn-texto" id="btn-vaciar">Vaciar</button>
+        </div>
+        <ul class="ticket-lista" id="lista-carrito"></ul>
+        <div class="ticket-total">
+          <span>Total</span>
+          <strong id="total-carrito">$ 0</strong>
+        </div>
+        <div class="ticket-borde" aria-hidden="true"></div>
+      </div>
+
+      <div class="acciones-pago">
+        <button class="btn btn-pago btn-qr" id="btn-pagar-qr">
+          <span class="btn-titulo">Pagar ahora</span>
+          <span class="btn-sub">Código QR o código corto</span>
+        </button>
+        <button class="btn btn-pago btn-nomina" id="btn-pagar-nomina">
+          <span class="btn-titulo">Descontar de nómina</span>
+          <span class="btn-sub">Se cobra al final del mes</span>
+        </button>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ══════════════ ADMINISTRACIÓN ══════════════ -->
+<section id="pantalla-admin" class="pantalla">
+  <header class="barra">
+    <div class="barra-izq">
+      <span class="eyebrow">Administración</span>
+      <strong id="admin-usuario">—</strong>
+    </div>
+    <div class="barra-der">
+      <button class="btn btn-fantasma" id="btn-volver-tienda">Ir a la tienda</button>
+      <button class="btn btn-fantasma" id="btn-salir-admin">Salir</button>
+    </div>
+  </header>
+
+  <nav class="pestanas" id="pestanas">
+    <button class="pestana activa" data-panel="productos">Productos</button>
+    <button class="pestana" data-panel="usuarios">Usuarios</button>
+    <button class="pestana" data-panel="pedidos">Pedidos</button>
+    <button class="pestana" data-panel="ajustes">Ajustes</button>
+    <button class="pestana" data-panel="respaldo">Respaldo</button>
+  </nav>
+
+  <main class="admin-cuerpo">
+
+    <!-- Productos -->
+    <div class="panel activa" id="panel-productos">
+      <div class="panel-fila">
+        <form id="form-producto" class="tarjeta form-linea">
+          <input type="hidden" id="prod-id">
+          <label class="campo"><span>Código de barras</span><input id="prod-codigo" required></label>
+          <label class="campo"><span>Nombre</span><input id="prod-nombre" required></label>
+          <label class="campo campo-corto"><span>Precio</span><input id="prod-precio" type="number" min="0" step="1" required></label>
+          <label class="campo campo-corto"><span>Categoría</span><input id="prod-categoria" placeholder="Snacks"></label>
+          <div class="form-botones">
+            <button class="btn btn-principal" type="submit" id="prod-guardar">Agregar producto</button>
+            <button class="btn btn-fantasma" type="button" id="prod-cancelar" hidden>Cancelar</button>
+          </div>
+        </form>
+      </div>
+      <div class="panel-fila panel-fila-partida">
+        <label class="campo campo-buscar"><span>Buscar</span><input id="buscar-producto" placeholder="Nombre o código"></label>
+        <div class="form-botones">
+          <label class="btn btn-fantasma btn-archivo">Importar CSV<input type="file" id="importar-productos" accept=".csv,text/csv" hidden></label>
+          <button class="btn btn-fantasma" id="exportar-productos">Exportar CSV</button>
+        </div>
+      </div>
+      <div class="tabla-envoltura"><table class="tabla" id="tabla-productos"></table></div>
+    </div>
+
+    <!-- Usuarios -->
+    <div class="panel" id="panel-usuarios">
+      <div class="panel-fila">
+        <form id="form-usuario" class="tarjeta form-linea">
+          <input type="hidden" id="usr-id">
+          <label class="campo"><span>Nombre completo</span><input id="usr-nombre" required></label>
+          <label class="campo campo-corto"><span>Identificación</span><input id="usr-cedula" required inputmode="numeric"></label>
+          <label class="campo campo-corto"><span>Contraseña</span><input id="usr-clave" type="text" placeholder="Mínimo 4 caracteres"></label>
+          <label class="campo campo-corto"><span>Rol</span>
+            <select id="usr-rol"><option value="empleado">Empleado</option><option value="admin">Administrador</option></select>
+          </label>
+          <div class="form-botones">
+            <button class="btn btn-principal" type="submit" id="usr-guardar">Crear usuario</button>
+            <button class="btn btn-fantasma" type="button" id="usr-cancelar" hidden>Cancelar</button>
+          </div>
+        </form>
+      </div>
+      <div class="panel-fila panel-fila-partida">
+        <label class="campo campo-buscar"><span>Buscar</span><input id="buscar-usuario" placeholder="Nombre o identificación"></label>
+        <div class="form-botones">
+          <button class="btn btn-fantasma" id="exportar-usuarios">Exportar CSV</button>
+        </div>
+      </div>
+      <div class="tabla-envoltura"><table class="tabla" id="tabla-usuarios"></table></div>
+    </div>
+
+    <!-- Pedidos -->
+    <div class="panel" id="panel-pedidos">
+      <div class="panel-fila filtros">
+        <label class="campo campo-corto"><span>Desde</span><input id="f-desde" type="date"></label>
+        <label class="campo campo-corto"><span>Hasta</span><input id="f-hasta" type="date"></label>
+        <label class="campo campo-corto"><span>Método</span>
+          <select id="f-metodo"><option value="">Todos</option><option value="nomina">Nómina</option><option value="qr">Pago inmediato</option></select>
+        </label>
+        <label class="campo campo-corto"><span>Estado</span>
+          <select id="f-estado"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="conciliado">Conciliado</option></select>
+        </label>
+        <label class="campo"><span>Persona</span><input id="f-persona" placeholder="Nombre o identificación"></label>
+      </div>
+
+      <div class="resumen" id="resumen-pedidos"></div>
+
+      <div class="panel-fila panel-fila-partida">
+        <h2 class="titulo-seccion">Resumen para nómina</h2>
+        <div class="form-botones">
+          <button class="btn btn-fantasma" id="exportar-pedidos">Descargar CSV</button>
+          <button class="btn btn-principal" id="enviar-correo">Enviar al correo de la empresa</button>
+        </div>
+      </div>
+      <div class="tabla-envoltura"><table class="tabla" id="tabla-nomina"></table></div>
+
+      <h2 class="titulo-seccion">Detalle de pedidos</h2>
+      <div class="tabla-envoltura"><table class="tabla" id="tabla-pedidos"></table></div>
+    </div>
+
+    <!-- Ajustes -->
+    <div class="panel" id="panel-ajustes">
+      <form id="form-ajustes" class="tarjeta form-columna">
+        <label class="campo"><span>Nombre de la empresa o del punto de venta</span><input id="cfg-empresa"></label>
+        <label class="campo"><span>Correo de la empresa (recibe el reporte)</span><input id="cfg-correo" type="email"></label>
+        <label class="campo"><span>Código corto de pago</span><input id="cfg-codigo" placeholder="Ej: Nequi 300 000 0000"></label>
+        <label class="campo"><span>Instrucciones que ve la persona al pagar</span><textarea id="cfg-instrucciones" rows="3"></textarea></label>
+        <label class="campo"><span>Imagen del código QR</span>
+          <input type="file" id="cfg-qr-archivo" accept="image/*">
+        </label>
+        <div class="qr-vista" id="cfg-qr-vista"></div>
+        <label class="campo campo-corto"><span>Moneda</span>
+          <select id="cfg-moneda"><option value="COP">COP</option><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select>
+        </label>
+        <label class="campo-check">
+          <input type="checkbox" id="cfg-funcion">
+          <span>Enviar el reporte automáticamente con Netlify Functions (requiere configurar la clave de correo en Netlify). Si está apagado, el reporte se descarga y se abre el correo para adjuntarlo.</span>
+        </label>
+        <div class="form-botones"><button class="btn btn-principal" type="submit">Guardar ajustes</button></div>
+      </form>
+    </div>
+
+    <!-- Respaldo -->
+    <div class="panel" id="panel-respaldo">
+      <div class="tarjeta form-columna">
+        <h2 class="titulo-seccion">Copia de seguridad</h2>
+        <p class="nota">Los datos se guardan en esta tableta. Descarga una copia con frecuencia: si se borran los datos del navegador, se pierde la información.</p>
+        <div class="form-botones">
+          <button class="btn btn-principal" id="respaldo-descargar">Descargar copia</button>
+          <label class="btn btn-fantasma btn-archivo">Restaurar copia<input type="file" id="respaldo-cargar" accept=".json,application/json" hidden></label>
+        </div>
+        <hr class="separador">
+        <h2 class="titulo-seccion">Borrar pedidos</h2>
+        <p class="nota">Elimina los pedidos ya cobrados. Los productos y usuarios se conservan.</p>
+        <div class="form-botones"><button class="btn btn-peligro" id="borrar-pedidos">Borrar pedidos conciliados</button></div>
+      </div>
+    </div>
+
+  </main>
+</section>
+
+<!-- ══════════════ MODALES ══════════════ -->
+<div class="modal" id="modal-qr" role="dialog" aria-modal="true">
+  <div class="modal-caja">
+    <h2>Pagar ahora</h2>
+    <p class="modal-total">Total a pagar <strong id="qr-total">$ 0</strong></p>
+    <div class="qr-vista" id="qr-imagen"></div>
+    <p class="codigo-corto" id="qr-codigo"></p>
+    <p class="nota" id="qr-instrucciones"></p>
+    <label class="campo"><span>Número de aprobación o referencia del pago</span>
+      <input id="qr-referencia" placeholder="Ej: M12345678">
+    </label>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" data-cerrar>Volver</button>
+      <button class="btn btn-principal" id="qr-confirmar">Confirmar pago</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-nomina" role="dialog" aria-modal="true">
+  <div class="modal-caja">
+    <h2>Descontar de nómina</h2>
+    <p class="modal-total">Total del pedido <strong id="nomina-total">$ 0</strong></p>
+    <p class="nota" id="nomina-acumulado"></p>
+    <label class="campo-check">
+      <input type="checkbox" id="nomina-acepto">
+      <span>Autorizo que este valor se descuente de mi próximo pago de nómina.</span>
+    </label>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" data-cerrar>Volver</button>
+      <button class="btn btn-principal" id="nomina-confirmar">Confirmar pedido</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-recibo" role="dialog" aria-modal="true">
+  <div class="modal-caja recibo">
+    <span class="eyebrow">Pedido registrado</span>
+    <p class="folio" id="recibo-folio">—</p>
+    <ul class="ticket-lista" id="recibo-lista"></ul>
+    <div class="ticket-total"><span>Total</span><strong id="recibo-total">$ 0</strong></div>
+    <p class="nota" id="recibo-metodo"></p>
+    <div class="form-botones">
+      <button class="btn btn-principal btn-grande" id="recibo-listo">Listo</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
