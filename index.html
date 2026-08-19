@@ -34,6 +34,7 @@
       </label>
       <div class="teclado" id="teclado-login"></div>
       <button class="btn btn-principal btn-grande" type="submit">Entrar</button>
+      <button class="btn btn-texto" type="button" id="btn-olvide">Olvidé mi contraseña</button>
       <p class="nota" id="nota-admin"></p>
     </form>
   </div>
@@ -48,6 +49,7 @@
     </div>
     <div class="barra-der">
       <button class="btn btn-fantasma" id="btn-mis-compras">Mis compras</button>
+      <button class="btn btn-fantasma" id="btn-mi-clave">Mi contraseña</button>
       <button class="btn btn-fantasma" id="btn-ir-admin" hidden>Administración</button>
       <button class="btn btn-fantasma" id="btn-salir">Salir</button>
     </div>
@@ -171,9 +173,14 @@
           <input type="hidden" id="usr-id">
           <label class="campo"><span>Nombre completo</span><input id="usr-nombre" required></label>
           <label class="campo campo-corto"><span>Identificación</span><input id="usr-cedula" required inputmode="numeric"></label>
+          <label class="campo"><span>Correo electrónico</span><input id="usr-correo" type="email" placeholder="nombre@lutec.com.co"></label>
           <label class="campo campo-corto"><span>Contraseña numérica</span><input id="usr-clave" type="text" inputmode="numeric" placeholder="Mínimo 4 dígitos"></label>
           <label class="campo campo-corto"><span>Rol</span>
             <select id="usr-rol"><option value="empleado">Empleado</option><option value="admin">Administrador</option></select>
+          </label>
+          <label class="campo-check campo-corto">
+            <input type="checkbox" id="usr-cambiar" checked>
+            <span>Pedirle que cambie la contraseña la primera vez que entre</span>
           </label>
           <div class="form-botones">
             <button class="btn btn-principal" type="submit" id="usr-guardar">Crear usuario</button>
@@ -258,6 +265,11 @@
         <div class="qr-vista" id="cfg-qr-vista"></div>
         <label class="campo campo-corto"><span>Moneda</span>
           <select id="cfg-moneda"><option value="COP">COP</option><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select>
+        </label>
+        <label class="campo campo-corto"><span>Contraseña genérica para usuarios nuevos</span><input id="cfg-generica" inputmode="numeric" placeholder="1234"></label>
+        <label class="campo-check">
+          <input type="checkbox" id="cfg-correo-recuperacion">
+          <span>Permitir que cada persona recupere su contraseña con un código enviado a su correo. Necesita la función <code>enviar-codigo</code> publicada en Netlify.</span>
         </label>
         <label class="campo-check">
           <input type="checkbox" id="cfg-funcion">
@@ -353,6 +365,58 @@
     <div class="resumen" id="historial-resumen"></div>
     <div class="tabla-envoltura"><table class="tabla" id="tabla-historial"></table></div>
     <div class="form-botones"><button class="btn btn-principal btn-grande" data-cerrar>Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-codigo" role="dialog" aria-modal="true">
+  <div class="modal-caja">
+    <h2 id="codigo-titulo">Código de recuperación</h2>
+    <p class="nota" id="codigo-texto"></p>
+    <p class="codigo-corto codigo-grande" id="codigo-valor">—</p>
+    <div class="datos-inicio" id="codigo-extra"></div>
+    <p class="nota">Anótalo o guárdalo fuera de la tableta. Es la única forma de volver a entrar si se olvida la contraseña del administrador.</p>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" id="codigo-descargar" type="button">Descargar en un archivo</button>
+      <button class="btn btn-principal" id="codigo-listo" type="button">Ya lo guardé</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-recuperar" role="dialog" aria-modal="true">
+  <div class="modal-caja">
+    <h2>Recuperar el acceso</h2>
+    <p class="nota">Te enviamos un código al correo registrado. Si no tienes correo registrado, pídele al administrador que te cambie la contraseña.</p>
+
+    <label class="campo"><span>Número de identificación</span><input id="rec-cedula" inputmode="numeric"></label>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" id="rec-enviar" type="button">Enviarme un código al correo</button>
+    </div>
+    <p class="nota" id="rec-aviso-envio"></p>
+
+    <hr class="separador">
+
+    <label class="campo"><span>Código recibido</span><input id="rec-codigo" inputmode="numeric" placeholder="000000"></label>
+    <label class="campo"><span>Nueva contraseña numérica</span><input id="rec-clave" type="password" inputmode="numeric"></label>
+    <label class="campo"><span>Repite la nueva contraseña</span><input id="rec-clave2" type="password" inputmode="numeric"></label>
+    <p class="nota">Los administradores también pueden usar aquí su código de recuperación de 12 dígitos.</p>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" data-cerrar>Volver</button>
+      <button class="btn btn-principal" id="rec-confirmar" type="button">Cambiar contraseña</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-cambiar-clave" role="dialog" aria-modal="true">
+  <div class="modal-caja">
+    <h2 id="clave-titulo">Cambiar mi contraseña</h2>
+    <p class="nota" id="clave-texto"></p>
+    <label class="campo" id="campo-clave-actual"><span>Contraseña actual</span><input id="clave-actual" type="password" inputmode="numeric"></label>
+    <label class="campo"><span>Contraseña nueva (mínimo 4 dígitos)</span><input id="clave-nueva" type="password" inputmode="numeric"></label>
+    <label class="campo"><span>Repite la contraseña nueva</span><input id="clave-nueva2" type="password" inputmode="numeric"></label>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" id="clave-cancelar" type="button">Cancelar</button>
+      <button class="btn btn-principal" id="clave-guardar" type="button">Guardar</button>
+    </div>
   </div>
 </div>
 

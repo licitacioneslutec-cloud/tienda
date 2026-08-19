@@ -16,6 +16,7 @@ styles.css
 app.js
 netlify.toml
 netlify/functions/enviar-reporte.js
+netlify/functions/enviar-codigo.js
 README.md
 ```
 
@@ -37,6 +38,51 @@ La cámara solo funciona sobre HTTPS, que es lo que entrega Netlify. Si pruebas 
 | `0000` | `1234` |
 
 Cámbiala de inmediato en **Administración › Usuarios › Editar**.
+
+La primera vez que se abre el aplicativo aparece un **código de recuperación** de 12 dígitos. Anótalo o descárgalo: es lo único que permite volver a entrar si se olvida la contraseña del administrador. Si ya venías usando una versión anterior, el código aparece la próxima vez que el administrador inicie sesión.
+
+## 3.1 Contraseñas de los usuarios
+
+Al crear cada persona en **Usuarios** defines:
+
+- **Correo electrónico**: es lo que permite recuperar la contraseña sola. Debe ser del dominio de la empresa.
+- **Contraseña numérica**: viene precargada con la genérica que definas en **Ajustes** (`1234` por defecto), así puedes dar de alta a mucha gente rápido.
+- **Pedirle que cambie la contraseña la primera vez que entre**: marcado por defecto. Con esto, al ingresar con la genérica el aplicativo obliga a definir una propia antes de dejar comprar. En la tabla de usuarios esas cuentas aparecen marcadas como *Clave genérica*.
+
+Cualquier persona puede cambiar su contraseña cuando quiera con el botón **Mi contraseña** de la barra superior; ahí sí se le pide la actual.
+
+## 3.2 Recuperación por correo
+
+En la pantalla de ingreso, **Olvidé mi contraseña** pide la identificación y envía un código de 6 dígitos al correo registrado. El código vence en 15 minutos, sirve una sola vez y admite cinco intentos.
+
+Para que funcione hay que dejar lista la función `enviar-codigo` en Netlify:
+
+1. Crea una cuenta en resend.com y **verifica el dominio `lutec.com.co`** agregando los registros DNS que te indique. Sin ese paso el correo no sale, porque el remitente `proyectos@lutec.com.co` tiene que estar autorizado.
+2. En Netlify › **Site settings › Environment variables** agrega:
+   - `RESEND_API_KEY` — la clave de Resend
+   - `CORREO_ORIGEN` — `proyectos@lutec.com.co`
+   - `DOMINIO_PERMITIDO` — `lutec.com.co`
+3. En **Ajustes** deja marcada la casilla de recuperación por correo.
+
+La función solo acepta correos del dominio autorizado y limita a cinco envíos por dirección cada quince minutos, para que nadie use la dirección pública como máquina de spam.
+
+Un detalle importante del diseño: el código viaja por correo, pero se valida contra la tableta, porque es allí donde vive la base de datos. Es decir, la persona debe pedir el código y escribirlo **en la misma tableta**. No sirve para entrar desde otro dispositivo.
+
+## 3.3 Si se olvida la contraseña del administrador
+
+Además del correo, cada administrador tiene un código de recuperación de 12 dígitos que sirve como respaldo si el correo falla:
+
+1. En la pantalla de ingreso toca **Olvidé mi contraseña**.
+2. Escribe la identificación del administrador y el código de recuperación de 12 dígitos en la casilla del código.
+3. Define la contraseña nueva.
+4. El aplicativo entrega un código de recuperación nuevo; el anterior deja de servir.
+
+Notas sobre este mecanismo:
+
+- El código de 12 dígitos solo sirve para cuentas de administrador. Los empleados usan el código que llega por correo, o le piden al administrador que se la cambie desde **Usuarios › Editar**.
+- El código se guarda cifrado, igual que las contraseñas, así que nadie puede leerlo desde el aplicativo. Si se pierde el código y también la contraseña, las únicas salidas son restaurar una copia desde **Respaldo** o borrar los datos del navegador para volver a empezar.
+- En **Usuarios**, el botón **Código nuevo** genera otro código para un administrador (útil si el anterior se filtró o se perdió). Requiere estar dentro con una cuenta de administrador.
+- Al crear un usuario con rol de administrador, el aplicativo muestra su código para que se lo entregues.
 
 ## 4. Puesta en marcha
 

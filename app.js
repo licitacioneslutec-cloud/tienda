@@ -76,6 +76,199 @@ async function hashClave(clave, sal) {
   return 'simple_' + h.toString(16);
 }
 
+/* ── Códigos enviados por correo ─────────────────────────── */
+const enmascarar = c => String(c || '').replace(/^(.).*(@.*)$/, (m, a, b) => a + '•••' + b);
+
+async function enviarCodigoCorreo(u, usuarios) {
+  const codigo = String(Math.floor(100000 + Math.random() * 900000));
+  const sal = uid();
+  const otp = { hash: await hashClave(codigo, sal), sal, expira: Date.now() + 15 * 60 * 1000, intentos: 0 };
+
+  const r = await fetch('/.netlify/functions/enviar-codigo', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ para: u.correo, codigo, nombre: u.nombre, empresa: config.empresa })
+  });
+  if (!r.ok) throw new Error(await r.text());
+
+  u.otp = otp;
+  guardar(K.usuarios, usuarios);
+}
+
+$('#rec-enviar').addEventListener('click', async () => {
+  const cedula = $('#rec-cedula').value.trim();
+  const usuarios = leerUsuarios();
+  const u = usuarios.find(x => x.cedula === cedula && x.activo !== false);
+  const aparente = 'Si esa identificación está registrada con un correo, allí llegará el código. Vence en 15 minutos.';
+
+  if (!config.correoRecuperacion)
+    return aviso('La recuperación por correo está apagada. Usa el código de administrador o pide ayuda.', 'error');
+  if (!cedula) return aviso('Escribe tu número de identificación.', 'error');
+
+  $('#rec-aviso-envio').textContent = 'Enviando…';
+  if (!u || !u.correo) { $('#rec-aviso-envio').textContent = aparente; return; }
+
+  try {
+    await enviarCodigoCorreo(u, usuarios);
+    $('#rec-aviso-envio').textContent = `Código enviado a ${enmascarar(u.correo)}. Vence en 15 minutos.`;
+  } catch {
+    $('#rec-aviso-envio').textContent = 'No se pudo enviar el correo. Revisa la configuración en Netlify o pídele ayuda al administrador.';
+  }
+});
+
+/* ── Códigos de recuperación ─────────────────────────────── */
+const soloDigitos = s => String(s ?? '').replace(/\D/g, '');
+
+function nuevoCodigo() {
+  let d = '';
+  for (let i = 0; i < 12; i++) d += Math.floor(Math.random() * 10);
+  return d.replace(/(\d{4})(\d{4})(\d{4})/, '$1-$2-$3');
+}
+
+/* Genera un código nuevo para el usuario y guarda solo su huella cifrada. */
+async function asignarCodigo(u) {
+  const codigo = nuevoCodigo();
+  u.salRec = uid();
+  u.recuperacion = await hashClave(soloDigitos(codigo), u.salRec);
+  return codigo;
+}
+
+let textoCodigo = '';
+function mostrarCodigo(codigo, { titulo, texto, extra = [] }) {
+  $('#codigo-titulo').textContent = titulo;
+  $('#codigo-texto').textContent = texto;
+  $('#codigo-valor').textContent = codigo;
+  $('#codigo-extra').innerHTML = extra
+    .map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
+  textoCodigo =
+`${config.empresa || 'Tienda interna'} — datos de acceso
+Generado: ${new Date().toLocaleString('es-CO')}
+
+${extra.map(([k, v]) => `${k}: ${v}`).join('\n')}
+Código de recuperación: ${codigo}
+
+Guarda este archivo fuera de la tableta. El código sirve una sola vez
+para cambiar la contraseña del administrador desde la pantalla de ingreso.`;
+  abrirModal('modal-codigo');
+}
+
+$('#codigo-listo').addEventListener('click', () => cerrarModal('modal-codigo'));
+$('#codigo-descargar').addEventListener('click', () =>
+  descargar(`acceso_tienda_${hoy()}.txt`, textoCodigo, 'text/plain'));
+
+/* Los administradores creados antes de esta versión reciben su código al entrar. */
+async function asegurarCodigo(u) {
+  if (u.rol !== 'admin' || u.recuperacion) return;
+  const usuarios = leerUsuarios();
+  const real = usuarios.find(x => x.id === u.id); if (!real) return;
+  const codigo = await asignarCodigo(real);
+  guardar(K.usuarios, usuarios);
+  u.salRec = real.salRec; u.recuperacion = real.recuperacion;
+  mostrarCodigo(codigo, {
+    titulo: 'Guarda tu código de recuperación',
+    texto: 'Con este código puedes cambiar tu contraseña desde la pantalla de ingreso si algún día la olvidas.',
+    extra: [['Identificación', u.cedula], ['Nombre', u.nombre]]
+  });
+}
+
+$('#btn-olvide').addEventListener('click', () => {
+  ['#rec-cedula', '#rec-codigo', '#rec-clave', '#rec-clave2'].forEach(s => $(s).value = '');
+  $('#rec-aviso-envio').textContent = '';
+  $('#rec-enviar').hidden = !config.correoRecuperacion;
+  abrirModal('modal-recuperar');
+});
+
+$('#rec-confirmar').addEventListener('click', async () => {
+  const cedula = $('#rec-cedula').value.trim();
+  const codigo = soloDigitos($('#rec-codigo').value);
+  const clave  = $('#rec-clave').value.trim();
+  const clave2 = $('#rec-clave2').value.trim();
+
+  if (clave.length < 4) return aviso('La nueva contraseña necesita al menos 4 dígitos.', 'error');
+  if (clave !== clave2) return aviso('Las dos contraseñas no coinciden.', 'error');
+
+  const usuarios = leerUsuarios();
+  const u = usuarios.find(x => x.cedula === cedula && x.activo !== false);
+  if (!u) return aviso('La identificación o el código no coinciden.', 'error');
+
+  let valido = false, usoCodigoAdmin = false;
+
+  // Código de un solo uso enviado al correo
+  if (u.otp && Date.now() < u.otp.expira && (u.otp.intentos || 0) < 5) {
+    if (await hashClave(codigo, u.otp.sal) === u.otp.hash) valido = true;
+    else { u.otp.intentos = (u.otp.intentos || 0) + 1; guardar(K.usuarios, usuarios); }
+  }
+  // Código de recuperación del administrador
+  if (!valido && u.rol === 'admin' && u.recuperacion && await hashClave(codigo, u.salRec) === u.recuperacion) {
+    valido = true; usoCodigoAdmin = true;
+  }
+  if (!valido) return aviso('La identificación o el código no coinciden.', 'error');
+
+  u.sal = uid();
+  u.clave = await hashClave(clave, u.sal);
+  u.activo = true;
+  u.debeCambiar = false;
+  delete u.otp;
+  const siguiente = usoCodigoAdmin ? await asignarCodigo(u) : null;
+  if (!guardar(K.usuarios, usuarios)) return;
+
+  cerrarModal('modal-recuperar');
+  if (siguiente) {
+    mostrarCodigo(siguiente, {
+      titulo: 'Contraseña cambiada',
+      texto: 'Ya puedes entrar con la contraseña nueva. Este es tu código de recuperación actualizado: el anterior dejó de servir.',
+      extra: [['Identificación', u.cedula], ['Nombre', u.nombre]]
+    });
+  } else {
+    aviso('Contraseña cambiada. Ya puedes entrar.', 'ok');
+  }
+});
+
+/* ── Cambio de contraseña del propio usuario ─────────────── */
+let cambioObligatorio = false;
+
+function abrirCambioClave(obligatorio) {
+  cambioObligatorio = obligatorio;
+  ['#clave-actual', '#clave-nueva', '#clave-nueva2'].forEach(s => $(s).value = '');
+  $('#clave-titulo').textContent = obligatorio ? 'Crea tu contraseña' : 'Cambiar mi contraseña';
+  $('#clave-texto').textContent = obligatorio
+    ? 'Estás usando la contraseña genérica. Define una propia antes de continuar.'
+    : 'Debe tener al menos 4 dígitos.';
+  $('#campo-clave-actual').hidden = obligatorio;
+  $('#clave-cancelar').hidden = obligatorio;
+  $('#modal-cambiar-clave').classList.toggle('fijo', obligatorio);
+  abrirModal('modal-cambiar-clave');
+}
+
+$('#btn-mi-clave').addEventListener('click', () => abrirCambioClave(false));
+$('#clave-cancelar').addEventListener('click', () => cerrarModal('modal-cambiar-clave'));
+
+$('#clave-guardar').addEventListener('click', async () => {
+  const nueva = $('#clave-nueva').value.trim();
+  const nueva2 = $('#clave-nueva2').value.trim();
+  if (nueva.length < 4) return aviso('La contraseña necesita al menos 4 dígitos.', 'error');
+  if (nueva !== nueva2) return aviso('Las dos contraseñas no coinciden.', 'error');
+
+  const usuarios = leerUsuarios();
+  const u = usuarios.find(x => x.id === usuario.id); if (!u) return;
+
+  if (!cambioObligatorio) {
+    const actual = $('#clave-actual').value;
+    if (await hashClave(actual, u.sal) !== u.clave) return aviso('La contraseña actual no coincide.', 'error');
+  }
+
+  u.sal = uid();
+  u.clave = await hashClave(nueva, u.sal);
+  u.debeCambiar = false;
+  delete u.otp;
+  if (!guardar(K.usuarios, usuarios)) return;
+
+  usuario = u;
+  cambioObligatorio = false;
+  $('#modal-cambiar-clave').classList.remove('fijo');
+  cerrarModal('modal-cambiar-clave');
+  aviso('Contraseña actualizada', 'ok');
+});
+
 /* ── Imágenes ────────────────────────────────────────────── */
 function comprimirImagen(archivo, maxLado = 640, calidad = 0.75) {
   return new Promise((resolver, rechazar) => {
@@ -126,7 +319,8 @@ const refrescarProductos = () => { productos = LS.get(K.productos, []); };
 const CONFIG_BASE = {
   empresa: 'Tienda interna', correo: '', codigoCorto: '',
   instrucciones: 'Escanea el código con tu app de pagos. El administrador confirmará el pago después.',
-  qr: '', moneda: 'COP', usarFuncion: false
+  qr: '', moneda: 'COP', usarFuncion: false,
+  claveGenerica: '1234', correoRecuperacion: true
 };
 
 function siguienteNumero(lista) {
@@ -134,6 +328,8 @@ function siguienteNumero(lista) {
   const n = (usados.length ? Math.max(...usados) : 0) + 1;
   return String(n).padStart(2, '0');
 }
+
+let codigoInicial = null;
 
 async function inicializarDatos() {
   config = { ...CONFIG_BASE, ...LS.get(K.config, {}) };
@@ -166,10 +362,12 @@ async function inicializarDatos() {
 
   if (!localStorage.getItem(K.usuarios)) {
     const sal = uid();
-    guardar(K.usuarios, [{
+    const admin = {
       id: uid(), nombre: 'Administrador', cedula: '0000', rol: 'admin',
       sal, clave: await hashClave('1234', sal), activo: true, creado: new Date().toISOString()
-    }]);
+    };
+    codigoInicial = await asignarCodigo(admin);
+    guardar(K.usuarios, [admin]);
     $('#nota-admin').textContent = 'Primer ingreso: identificación 0000 y contraseña 1234. Cámbiala en Usuarios.';
   }
 }
@@ -251,6 +449,8 @@ function abrirSesion(u) {
   pintarCarrito();
   pintarRejilla();
   mostrar('pantalla-tienda');
+  asegurarCodigo(u);
+  if (u.debeCambiar) setTimeout(() => abrirCambioClave(true), 300);
 }
 
 function cerrarSesion() {
@@ -480,7 +680,9 @@ function cerrarModal(id) {
   enfocarEscaner();
 }
 $$('[data-cerrar]').forEach(b => b.addEventListener('click', e => cerrarModal(e.target.closest('.modal').id)));
-$$('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) cerrarModal(m.id); }));
+$$('.modal').forEach(m => m.addEventListener('click', e => {
+  if (e.target === m && !m.classList.contains('fijo')) cerrarModal(m.id);
+}));
 
 /* ── Pagos ───────────────────────────────────────────────── */
 $('#btn-pagar-qr').addEventListener('click', () => {
@@ -771,28 +973,50 @@ $('#form-usuario').addEventListener('submit', async e => {
   if (!id && clave.length < 4)
     return aviso('La contraseña necesita al menos 4 dígitos.', 'error');
 
+  let afectado;
   if (id) {
-    const u = usuarios.find(x => x.id === id);
-    u.nombre = $('#usr-nombre').value.trim();
-    u.cedula = cedula;
-    u.rol = $('#usr-rol').value;
-    if (clave) { u.sal = uid(); u.clave = await hashClave(clave, u.sal); }
+    afectado = usuarios.find(x => x.id === id);
+    afectado.nombre = $('#usr-nombre').value.trim();
+    afectado.cedula = cedula;
+    afectado.correo = $('#usr-correo').value.trim();
+    afectado.rol = $('#usr-rol').value;
+    afectado.debeCambiar = $('#usr-cambiar').checked;
+    if (clave) { afectado.sal = uid(); afectado.clave = await hashClave(clave, afectado.sal); }
   } else {
     const sal = uid();
-    usuarios.push({
-      id: uid(), nombre: $('#usr-nombre').value.trim(), cedula, rol: $('#usr-rol').value,
-      sal, clave: await hashClave(clave, sal), activo: true, creado: new Date().toISOString()
-    });
+    afectado = {
+      id: uid(), nombre: $('#usr-nombre').value.trim(), cedula,
+      correo: $('#usr-correo').value.trim(), rol: $('#usr-rol').value,
+      sal, clave: await hashClave(clave, sal), activo: true,
+      debeCambiar: $('#usr-cambiar').checked, creado: new Date().toISOString()
+    };
+    usuarios.push(afectado);
   }
+
+  // Todo administrador necesita su propio código de recuperación
+  let codigo = null;
+  if (afectado.rol === 'admin' && !afectado.recuperacion) codigo = await asignarCodigo(afectado);
+
   guardar(K.usuarios, usuarios);
   limpiarFormUsuario();
   pintarUsuarios();
-  aviso('Usuario guardado', 'ok');
+
+  if (codigo) {
+    mostrarCodigo(codigo, {
+      titulo: 'Código de recuperación del administrador',
+      texto: 'Entrégaselo a esta persona. Le servirá para cambiar su contraseña si la olvida.',
+      extra: [['Identificación', afectado.cedula], ['Nombre', afectado.nombre]]
+    });
+  } else {
+    aviso('Usuario guardado', 'ok');
+  }
 });
 
 function limpiarFormUsuario() {
   $('#form-usuario').reset();
   $('#usr-id').value = '';
+  $('#usr-clave').value = config.claveGenerica || '';
+  $('#usr-cambiar').checked = true;
   $('#usr-guardar').textContent = 'Crear usuario';
   $('#usr-clave').placeholder = 'Mínimo 4 dígitos';
   $('#usr-cancelar').hidden = true;
@@ -807,32 +1031,48 @@ function pintarUsuarios() {
     !q || u.nombre.toLowerCase().includes(q) || u.cedula.includes(q));
 
   $('#tabla-usuarios').innerHTML = `
-    <thead><tr><th>Identificación</th><th>Nombre</th><th>Rol</th><th class="num">Pedidos</th><th class="num">Pendiente nómina</th><th>Estado</th><th></th></tr></thead>
+    <thead><tr><th>Identificación</th><th>Nombre</th><th>Correo</th><th>Rol</th><th class="num">Pedidos</th><th class="num">Pendiente nómina</th><th>Estado</th><th></th></tr></thead>
     <tbody>${lista.map(u => {
       const mios = pedidos.filter(p => p.usuarioId === u.id);
       const deuda = mios.filter(p => p.metodo === 'nomina' && p.estado === 'pendiente').reduce((s, p) => s + p.total, 0);
       return `<tr>
         <td class="cod">${esc(u.cedula)}</td>
         <td>${esc(u.nombre)}</td>
+        <td>${esc(u.correo || '—')}</td>
         <td>${u.rol === 'admin' ? 'Administrador' : 'Empleado'}</td>
         <td class="num">${mios.length}</td>
         <td class="num">${money(deuda)}</td>
-        <td>${u.activo === false ? '<span class="marca marca-inactivo">Inactivo</span>' : '<span class="marca marca-ok">Activo</span>'}</td>
+        <td>${u.activo === false ? '<span class="marca marca-inactivo">Inactivo</span>' : '<span class="marca marca-ok">Activo</span>'}${u.debeCambiar ? '<br><span class="marca marca-pendiente">Clave genérica</span>' : ''}</td>
         <td><div class="tabla-acciones">
           <button type="button" class="btn btn-fantasma mini" data-editar-u="${u.id}">Editar</button>
+          ${u.rol === 'admin' ? `<button type="button" class="btn btn-fantasma mini" data-codigo-u="${u.id}">Código nuevo</button>` : ''}
           <button type="button" class="btn btn-fantasma mini" data-alternar-u="${u.id}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>
         </div></td>
       </tr>`;
     }).join('')}</tbody>`;
 }
 
-$('#tabla-usuarios').addEventListener('click', e => {
+$('#tabla-usuarios').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   const usuarios = leerUsuarios();
+  if (b.dataset.codigoU) {
+    if (!confirm('Se generará un código nuevo y el anterior dejará de servir. ¿Continuar?')) return;
+    const u = usuarios.find(x => x.id === b.dataset.codigoU);
+    const codigo = await asignarCodigo(u);
+    if (!guardar(K.usuarios, usuarios)) return;
+    mostrarCodigo(codigo, {
+      titulo: 'Código de recuperación nuevo',
+      texto: 'El código anterior ya no sirve. Guarda este en su lugar.',
+      extra: [['Identificación', u.cedula], ['Nombre', u.nombre]]
+    });
+    return;
+  }
   if (b.dataset.editarU) {
     const u = usuarios.find(x => x.id === b.dataset.editarU);
     $('#usr-id').value = u.id; $('#usr-nombre').value = u.nombre;
     $('#usr-cedula').value = u.cedula; $('#usr-rol').value = u.rol;
+    $('#usr-correo').value = u.correo || '';
+    $('#usr-cambiar').checked = !!u.debeCambiar;
     $('#usr-clave').value = ''; $('#usr-clave').placeholder = 'Déjala vacía para no cambiarla';
     $('#usr-guardar').textContent = 'Guardar cambios';
     $('#usr-cancelar').hidden = false;
@@ -847,8 +1087,8 @@ $('#tabla-usuarios').addEventListener('click', e => {
 });
 
 $('#exportar-usuarios').addEventListener('click', () => {
-  const filas = [['identificacion', 'nombre', 'rol', 'activo']].concat(
-    leerUsuarios().map(u => [u.cedula, u.nombre, u.rol, u.activo === false ? 'no' : 'si']));
+  const filas = [['identificacion', 'nombre', 'correo', 'rol', 'activo']].concat(
+    leerUsuarios().map(u => [u.cedula, u.nombre, u.correo || '', u.rol, u.activo === false ? 'no' : 'si']));
   descargar('usuarios.csv', aCSV(filas), 'text/csv');
 });
 
@@ -1128,6 +1368,8 @@ function pintarAjustes() {
   $('#cfg-instrucciones').value = config.instrucciones;
   $('#cfg-moneda').value = config.moneda;
   $('#cfg-funcion').checked = !!config.usarFuncion;
+  $('#cfg-generica').value = config.claveGenerica || '';
+  $('#cfg-correo-recuperacion').checked = !!config.correoRecuperacion;
   $('#cfg-qr-vista').innerHTML = config.qr ? `<img src="${config.qr}" alt="Código QR de pago">` : '';
 }
 
@@ -1149,7 +1391,9 @@ $('#form-ajustes').addEventListener('submit', e => {
     codigoCorto: $('#cfg-codigo').value.trim(),
     instrucciones: $('#cfg-instrucciones').value.trim(),
     moneda: $('#cfg-moneda').value,
-    usarFuncion: $('#cfg-funcion').checked
+    usarFuncion: $('#cfg-funcion').checked,
+    claveGenerica: $('#cfg-generica').value.trim() || '1234',
+    correoRecuperacion: $('#cfg-correo-recuperacion').checked
   });
   guardar(K.config, config);
   $('#marca-empresa').textContent = config.empresa;
@@ -1218,4 +1462,13 @@ $('#borrar-soportes').addEventListener('click', () => {
   else mostrar('pantalla-login');
 
   pintarCarrito();
+
+  if (codigoInicial) {
+    mostrarCodigo(codigoInicial, {
+      titulo: 'Datos de acceso del administrador',
+      texto: 'Esta tableta se acaba de configurar. Cambia la contraseña apenas entres y guarda el código de recuperación.',
+      extra: [['Identificación', '0000'], ['Contraseña inicial', '1234']]
+    });
+    codigoInicial = null;
+  }
 })();
