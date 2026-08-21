@@ -195,10 +195,10 @@ img{max-width:100%; display:block}
   mask:radial-gradient(9px at 50% 0, transparent 98%, #000) repeat-x 0 0/18px 14px;
 }
 .acciones-pago{display:grid; gap:.7rem; margin-top:1rem}
+.reportes{max-width:none}
 .btn-pago{display:flex; flex-direction:column; align-items:flex-start; gap:.15rem; padding:1rem 1.2rem; min-height:78px; color:#fff}
 .btn-titulo{font-family:var(--disp); font-size:1.25rem; text-transform:uppercase; letter-spacing:.02em}
 .btn-sub{font-size:.85rem; opacity:.85; font-weight:400}
-.btn-qr{background:var(--teal)}
 .btn-nomina{background:var(--tinta)}
 .btn-pago:disabled{opacity:.4; cursor:not-allowed}
 
@@ -243,7 +243,6 @@ img{max-width:100%; display:block}
 
 .marca{display:inline-block; padding:.2rem .55rem; border-radius:999px; font-size:.75rem; font-weight:600; white-space:nowrap}
 .marca-nomina{background:#E7EEF7; color:#1F4E79}
-.marca-qr{background:#DFF1EC; color:var(--teal)}
 .marca-pendiente{background:#FDF3D0; color:#8A6B00}
 .marca-ok{background:#E3F0E1; color:#2C6B2F}
 .marca-inactivo{background:#EEE; color:var(--gris)}
@@ -251,20 +250,6 @@ img{max-width:100%; display:block}
 .resumen{display:flex; gap:.8rem; flex-wrap:wrap; margin:1rem 0}
 .resumen div{background:var(--blanco); border:1px solid var(--linea); border-radius:var(--r); padding:.9rem 1.1rem; flex:1 1 150px}
 .resumen b{display:block; font-family:var(--mono); font-size:1.4rem; margin-top:.2rem}
-
-.soportes{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:.8rem}
-.soporte{border:1px solid var(--linea); background:var(--blanco); border-radius:var(--r); overflow:hidden; display:flex; flex-direction:column}
-.soporte-vista{height:150px; background:var(--papel); display:flex; align-items:center; justify-content:center}
-.soporte-vista img{width:100%; height:100%; object-fit:cover}
-.soporte-vista .pdf{font-family:var(--disp); font-size:1.6rem; color:var(--gris)}
-.soporte-pie{padding:.6rem .7rem; display:flex; flex-direction:column; gap:.4rem}
-.soporte-pie b{font-size:.9rem}
-.soporte-pie small{color:var(--gris)}
-.soporte-acciones{display:flex; gap:.4rem}
-
-.qr-vista{display:flex; justify-content:center; margin:.6rem 0}
-.qr-vista img{max-width:230px; width:100%; border-radius:12px; border:1px solid var(--linea); background:#fff}
-.qr-vista:empty::after{content:"Sin imagen de QR cargada"; color:var(--gris); font-size:.85rem}
 
 /* ── Modales ── */
 .modal{
@@ -320,3 +305,14 @@ img{max-width:100%; display:block}
   .ticket-total strong{font-size:1.6rem}
   .rejilla{grid-template-columns:repeat(auto-fill,minmax(128px,1fr))}
 }
+
+/* ── Inventario ── */
+.marca-agotado{background:#F7DFDC; color:#9B2C1C}
+.producto.agotado{opacity:.55; cursor:not-allowed}
+.producto.agotado .producto-foto img{filter:grayscale(1)}
+.producto-stock{
+  position:absolute; bottom:6px; right:6px; background:var(--tinta); color:var(--papel);
+  font-family:var(--mono); font-size:.72rem; font-weight:600; padding:.15rem .45rem; border-radius:6px;
+}
+.producto.agotado .producto-stock{background:var(--rojo)}
+#form-movimiento{margin-bottom:1rem}

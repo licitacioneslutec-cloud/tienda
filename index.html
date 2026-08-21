@@ -49,7 +49,7 @@
     </div>
     <div class="barra-der">
       <button class="btn btn-fantasma" id="btn-mis-compras">Mis compras</button>
-      <button class="btn btn-fantasma" id="btn-mi-clave">Mi contraseña</button>
+      <button class="btn btn-fantasma" id="btn-mi-cuenta">Mi cuenta</button>
       <button class="btn btn-fantasma" id="btn-ir-admin" hidden>Administración</button>
       <button class="btn btn-fantasma" id="btn-salir">Salir</button>
     </div>
@@ -74,7 +74,7 @@
           <button class="btn btn-texto" id="cerrar-buscador" type="button">Cerrar</button>
         </div>
         <div class="visor" id="visor-numero">—</div>
-        <p class="nota" id="pista-numero">Escribe el número y pulsa Agregar.</p>
+        <p class="nota">Escribe el número y pulsa Agregar.</p>
         <div class="teclado" id="teclado-numero"></div>
       </div>
 
@@ -96,13 +96,9 @@
       </div>
 
       <div class="acciones-pago">
-        <button class="btn btn-pago btn-qr" id="btn-pagar-qr" type="button">
-          <span class="btn-titulo">Pagar ahora</span>
-          <span class="btn-sub">Código QR o código corto</span>
-        </button>
         <button class="btn btn-pago btn-nomina" id="btn-pagar-nomina" type="button">
-          <span class="btn-titulo">Descontar de nómina</span>
-          <span class="btn-sub">Se cobra al final del mes</span>
+          <span class="btn-titulo">Confirmar pedido</span>
+          <span class="btn-sub">Se descuenta de tu nómina</span>
         </button>
       </div>
     </div>
@@ -124,9 +120,9 @@
 
   <nav class="pestanas" id="pestanas">
     <button class="pestana activa" data-panel="productos">Productos</button>
+    <button class="pestana" data-panel="inventario">Inventario</button>
     <button class="pestana" data-panel="usuarios">Usuarios</button>
-    <button class="pestana" data-panel="pedidos">Pedidos</button>
-    <button class="pestana" data-panel="verificacion">Verificar pagos</button>
+    <button class="pestana" data-panel="pedidos">Pedidos y reportes</button>
     <button class="pestana" data-panel="ajustes">Ajustes</button>
     <button class="pestana" data-panel="respaldo">Respaldo</button>
   </nav>
@@ -149,6 +145,12 @@
           <label class="campo"><span>Nombre</span><input id="prod-nombre" required></label>
           <label class="campo campo-corto"><span>Precio</span><input id="prod-precio" type="number" min="0" step="1" required></label>
           <label class="campo campo-corto"><span>Categoría</span><input id="prod-categoria" placeholder="Bebidas"></label>
+          <label class="campo campo-corto"><span>Existencias</span><input id="prod-stock" type="number" step="1" value="0"></label>
+          <label class="campo campo-corto"><span>Avisar cuando queden</span><input id="prod-minimo" type="number" min="0" step="1" value="5"></label>
+          <label class="campo-check">
+            <input type="checkbox" id="prod-bloquear" checked>
+            <span>No dejar venderlo cuando llegue a cero</span>
+          </label>
           <div class="form-botones">
             <button class="btn btn-principal" type="submit" id="prod-guardar">Agregar producto</button>
             <button class="btn btn-fantasma" type="button" id="prod-cancelar" hidden>Cancelar</button>
@@ -166,6 +168,48 @@
       <div class="tabla-envoltura"><table class="tabla" id="tabla-productos"></table></div>
     </div>
 
+    <!-- Inventario -->
+    <div class="panel" id="panel-inventario">
+      <div class="resumen" id="resumen-inventario"></div>
+
+      <form id="form-movimiento" class="tarjeta form-linea">
+        <label class="campo"><span>Producto</span><select id="inv-producto"></select></label>
+        <label class="campo campo-corto"><span>Movimiento</span>
+          <select id="inv-tipo">
+            <option value="entrada">Entrada: llegó mercancía</option>
+            <option value="ajuste">Ajuste: dejar en esta cantidad</option>
+            <option value="baja">Baja: se dañó o se perdió</option>
+          </select>
+        </label>
+        <label class="campo campo-corto"><span>Cantidad</span><input id="inv-cantidad" type="number" min="0" step="1" required></label>
+        <label class="campo"><span>Motivo o factura</span><input id="inv-motivo" placeholder="Compra del 12 de agosto"></label>
+        <div class="form-botones">
+          <button class="btn btn-principal" type="submit">Registrar</button>
+        </div>
+      </form>
+
+      <div class="panel-fila panel-fila-partida">
+        <label class="campo-check">
+          <input type="checkbox" id="inv-solo-bajos">
+          <span>Ver solo lo agotado o por acabarse</span>
+        </label>
+        <div class="form-botones">
+          <button class="btn btn-fantasma" id="inv-csv" type="button">Descargar Excel</button>
+          <button class="btn btn-fantasma" id="inv-pdf" type="button">Descargar PDF</button>
+          <button class="btn btn-principal" id="inv-correo" type="button">Enviar al correo</button>
+        </div>
+      </div>
+      <div class="tabla-envoltura"><table class="tabla" id="tabla-inventario"></table></div>
+
+      <div class="panel-fila panel-fila-partida">
+        <h2 class="titulo-seccion">Últimos movimientos</h2>
+        <div class="form-botones">
+          <button class="btn btn-fantasma" id="mov-csv" type="button">Descargar movimientos</button>
+        </div>
+      </div>
+      <div class="tabla-envoltura"><table class="tabla" id="tabla-movimientos"></table></div>
+    </div>
+
     <!-- Usuarios -->
     <div class="panel" id="panel-usuarios">
       <div class="panel-fila">
@@ -178,7 +222,7 @@
           <label class="campo campo-corto"><span>Rol</span>
             <select id="usr-rol"><option value="empleado">Empleado</option><option value="admin">Administrador</option></select>
           </label>
-          <label class="campo-check campo-corto">
+          <label class="campo-check">
             <input type="checkbox" id="usr-cambiar" checked>
             <span>Pedirle que cambie la contraseña la primera vez que entre</span>
           </label>
@@ -191,27 +235,23 @@
       <div class="panel-fila panel-fila-partida">
         <label class="campo campo-buscar"><span>Buscar</span><input id="buscar-usuario" placeholder="Nombre o identificación"></label>
         <div class="form-botones">
+          <label class="btn btn-fantasma btn-archivo">Importar CSV<input type="file" id="importar-usuarios" accept=".csv,text/csv" hidden></label>
           <button class="btn btn-fantasma" id="exportar-usuarios" type="button">Exportar CSV</button>
         </div>
       </div>
       <div class="tabla-envoltura"><table class="tabla" id="tabla-usuarios"></table></div>
     </div>
 
-    <!-- Pedidos -->
+    <!-- Pedidos y reportes -->
     <div class="panel" id="panel-pedidos">
       <div class="panel-fila filtros">
         <label class="campo campo-corto"><span>Desde</span><input id="f-desde" type="date"></label>
         <label class="campo campo-corto"><span>Hasta</span><input id="f-hasta" type="date"></label>
-        <label class="campo campo-corto"><span>Método</span>
-          <select id="f-metodo"><option value="">Todos</option><option value="nomina">Nómina</option><option value="qr">Pago inmediato</option></select>
-        </label>
         <label class="campo campo-corto"><span>Estado</span>
           <select id="f-estado">
             <option value="">Todos</option>
-            <option value="aprobado">Aprobado, sin verificar</option>
-            <option value="verificado">Verificado</option>
-            <option value="pendiente">Pendiente de nómina</option>
-            <option value="conciliado">Descontado</option>
+            <option value="pendiente">Pendiente de descuento</option>
+            <option value="conciliado">Ya descontado</option>
           </select>
         </label>
         <label class="campo"><span>Persona</span><input id="f-persona" placeholder="Nombre o identificación"></label>
@@ -219,62 +259,59 @@
 
       <div class="resumen" id="resumen-pedidos"></div>
 
-      <div class="panel-fila panel-fila-partida">
-        <h2 class="titulo-seccion">Resumen para nómina</h2>
-        <div class="form-botones">
-          <button class="btn btn-fantasma" id="exportar-pedidos" type="button">Descargar CSV</button>
-          <button class="btn btn-principal" id="enviar-correo" type="button">Enviar al correo de la empresa</button>
+      <div class="tarjeta form-columna reportes">
+        <h2 class="titulo-seccion">Reportes del período filtrado</h2>
+        <div class="form-linea">
+          <label class="campo"><span>Contenido</span>
+            <select id="rep-tipo">
+              <option value="detallado">Detallado: qué pidió cada persona</option>
+              <option value="resumen">Resumen: total por persona, incluyendo a quienes no pidieron</option>
+            </select>
+          </label>
+          <div class="form-botones">
+            <button class="btn btn-fantasma" id="rep-csv" type="button">Descargar Excel</button>
+            <button class="btn btn-fantasma" id="rep-pdf" type="button">Descargar PDF</button>
+            <button class="btn btn-principal" id="rep-correo" type="button">Enviar al correo</button>
+          </div>
         </div>
+        <p class="nota" id="rep-destino"></p>
       </div>
+
+      <h2 class="titulo-seccion">Resumen para nómina</h2>
       <div class="tabla-envoltura"><table class="tabla" id="tabla-nomina"></table></div>
 
       <h2 class="titulo-seccion">Detalle de pedidos</h2>
       <div class="tabla-envoltura"><table class="tabla" id="tabla-pedidos"></table></div>
     </div>
 
-    <!-- Verificación de pagos -->
-    <div class="panel" id="panel-verificacion">
-      <div class="tarjeta form-columna">
-        <h2 class="titulo-seccion">Soporte del banco</h2>
-        <p class="nota">Sube la captura o el PDF con los movimientos para contrastarlos con los pagos registrados. Los pedidos quedan como <b>aprobados</b> hasta que los confirmes.</p>
-        <div class="form-linea">
-          <label class="campo"><span>Nota o período</span><input id="sop-nota" placeholder="Extracto del 1 al 15 de agosto"></label>
-          <div class="form-botones">
-            <label class="btn btn-fantasma btn-archivo">Subir archivo<input type="file" id="sop-archivo" accept="image/*,application/pdf" hidden></label>
-            <label class="btn btn-fantasma btn-archivo">Tomar foto<input type="file" id="sop-camara" accept="image/*" capture="environment" hidden></label>
-          </div>
-        </div>
-      </div>
-
-      <h2 class="titulo-seccion">Soportes cargados</h2>
-      <div class="soportes" id="lista-soportes"></div>
-
-      <h2 class="titulo-seccion">Pagos por verificar</h2>
-      <p class="nota">Si un pago no aparece en el soporte, pásalo a descuento de nómina. Solo el administrador puede hacerlo.</p>
-      <div class="tabla-envoltura"><table class="tabla" id="tabla-verificar"></table></div>
-    </div>
-
     <!-- Ajustes -->
     <div class="panel" id="panel-ajustes">
       <form id="form-ajustes" class="tarjeta form-columna">
+        <h2 class="titulo-seccion">General</h2>
         <label class="campo"><span>Nombre de la empresa o del punto de venta</span><input id="cfg-empresa"></label>
-        <label class="campo"><span>Correo de la empresa (recibe el reporte)</span><input id="cfg-correo" type="email"></label>
-        <label class="campo"><span>Código corto de pago</span><input id="cfg-codigo" placeholder="Ej: Nequi 300 000 0000"></label>
-        <label class="campo"><span>Instrucciones que ve la persona al pagar</span><textarea id="cfg-instrucciones" rows="3"></textarea></label>
-        <label class="campo"><span>Imagen del código QR</span><input type="file" id="cfg-qr-archivo" accept="image/*"></label>
-        <div class="qr-vista" id="cfg-qr-vista"></div>
-        <label class="campo campo-corto"><span>Moneda</span>
-          <select id="cfg-moneda"><option value="COP">COP</option><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select>
-        </label>
-        <label class="campo campo-corto"><span>Contraseña genérica para usuarios nuevos</span><input id="cfg-generica" inputmode="numeric" placeholder="1234"></label>
+        <label class="campo"><span>Correo que recibe los reportes</span><input id="cfg-correo" type="email"></label>
+        <div class="form-linea">
+          <label class="campo campo-corto"><span>Moneda</span>
+            <select id="cfg-moneda"><option value="COP">COP</option><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select>
+          </label>
+          <label class="campo campo-corto"><span>Contraseña genérica</span><input id="cfg-generica" inputmode="numeric" placeholder="1234"></label>
+          <label class="campo campo-corto"><span>Dominio de correo permitido</span><input id="cfg-dominio" placeholder="lutec.com.co"></label>
+        </div>
+
+        <hr class="separador">
+        <h2 class="titulo-seccion">Correo por n8n</h2>
+        <p class="nota">El aplicativo no envía correos por su cuenta: le entrega los datos a un flujo de n8n y ese flujo se encarga del envío. En el webhook de n8n hay que permitir el origen de esta página (CORS).</p>
+        <label class="campo"><span>URL del webhook</span><input id="cfg-webhook" placeholder="https://n8n.tuempresa.com/webhook/tienda"></label>
+        <label class="campo"><span>Token compartido (se envía en la cabecera X-Tienda-Token)</span><input id="cfg-token"></label>
         <label class="campo-check">
           <input type="checkbox" id="cfg-correo-recuperacion">
-          <span>Permitir que cada persona recupere su contraseña con un código enviado a su correo. Necesita la función <code>enviar-codigo</code> publicada en Netlify.</span>
+          <span>Permitir que cada persona recupere su contraseña con un código enviado a su correo</span>
         </label>
-        <label class="campo-check">
-          <input type="checkbox" id="cfg-funcion">
-          <span>Enviar el reporte automáticamente con Netlify Functions. Si está apagado, el reporte se descarga y se abre el correo para adjuntarlo.</span>
-        </label>
+        <div class="form-botones">
+          <button class="btn btn-fantasma" id="cfg-probar" type="button">Enviar un correo de prueba</button>
+        </div>
+
+        <hr class="separador">
         <div class="form-botones"><button class="btn btn-principal" type="submit">Guardar ajustes</button></div>
       </form>
     </div>
@@ -291,10 +328,9 @@
         </div>
         <hr class="separador">
         <h2 class="titulo-seccion">Liberar espacio</h2>
-        <p class="nota">Elimina los pedidos ya cerrados y los soportes antiguos. Los productos y usuarios se conservan.</p>
+        <p class="nota">Elimina los pedidos ya descontados. Los productos y usuarios se conservan.</p>
         <div class="form-botones">
-          <button class="btn btn-peligro" id="borrar-pedidos" type="button">Borrar pedidos cerrados</button>
-          <button class="btn btn-peligro" id="borrar-soportes" type="button">Borrar todos los soportes</button>
+          <button class="btn btn-peligro" id="borrar-pedidos" type="button">Borrar pedidos descontados</button>
         </div>
       </div>
     </div>
@@ -312,27 +348,9 @@
   </div>
 </div>
 
-<div class="modal" id="modal-qr" role="dialog" aria-modal="true">
-  <div class="modal-caja">
-    <h2>Pagar ahora</h2>
-    <p class="modal-total">Total a pagar <strong id="qr-total">$ 0</strong></p>
-    <div class="qr-vista" id="qr-imagen"></div>
-    <p class="codigo-corto" id="qr-codigo"></p>
-    <p class="nota" id="qr-instrucciones"></p>
-    <label class="campo"><span>Últimos dígitos o referencia del pago (opcional)</span>
-      <input id="qr-referencia" inputmode="numeric" placeholder="Ej: 4821">
-    </label>
-    <p class="nota">El pedido queda aprobado y el administrador lo verifica después con el soporte del banco.</p>
-    <div class="form-botones">
-      <button class="btn btn-fantasma" data-cerrar>Volver</button>
-      <button class="btn btn-principal" id="qr-confirmar" type="button">Ya pagué</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal" id="modal-nomina" role="dialog" aria-modal="true">
   <div class="modal-caja">
-    <h2>Descontar de nómina</h2>
+    <h2>Confirmar pedido</h2>
     <p class="modal-total">Total del pedido <strong id="nomina-total">$ 0</strong></p>
     <p class="nota" id="nomina-acumulado"></p>
     <label class="campo-check">
@@ -341,7 +359,7 @@
     </label>
     <div class="form-botones">
       <button class="btn btn-fantasma" data-cerrar>Volver</button>
-      <button class="btn btn-principal" id="nomina-confirmar" type="button">Confirmar pedido</button>
+      <button class="btn btn-principal" id="nomina-confirmar" type="button">Confirmar</button>
     </div>
   </div>
 </div>
@@ -368,16 +386,35 @@
   </div>
 </div>
 
-<div class="modal" id="modal-codigo" role="dialog" aria-modal="true">
+<div class="modal" id="modal-cuenta" role="dialog" aria-modal="true">
   <div class="modal-caja">
-    <h2 id="codigo-titulo">Código de recuperación</h2>
-    <p class="nota" id="codigo-texto"></p>
-    <p class="codigo-corto codigo-grande" id="codigo-valor">—</p>
-    <div class="datos-inicio" id="codigo-extra"></div>
-    <p class="nota">Anótalo o guárdalo fuera de la tableta. Es la única forma de volver a entrar si se olvida la contraseña del administrador.</p>
+    <h2>Mi cuenta</h2>
+    <p class="nota" id="cuenta-texto"></p>
+    <div class="datos-inicio" id="cuenta-datos"></div>
+    <label class="campo"><span>Mi correo electrónico</span><input id="cuenta-correo" type="email"></label>
     <div class="form-botones">
-      <button class="btn btn-fantasma" id="codigo-descargar" type="button">Descargar en un archivo</button>
-      <button class="btn btn-principal" id="codigo-listo" type="button">Ya lo guardé</button>
+      <button class="btn btn-fantasma" id="cuenta-probar" type="button">Enviarme un correo de prueba</button>
+      <button class="btn btn-fantasma" id="cuenta-guardar" type="button">Guardar correo</button>
+    </div>
+    <p class="nota" id="cuenta-aviso"></p>
+    <hr class="separador">
+    <div class="form-botones">
+      <button class="btn btn-fantasma" id="cuenta-clave" type="button">Cambiar mi contraseña</button>
+      <button class="btn btn-principal" data-cerrar>Listo</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-cambiar-clave" role="dialog" aria-modal="true">
+  <div class="modal-caja">
+    <h2 id="clave-titulo">Cambiar mi contraseña</h2>
+    <p class="nota" id="clave-texto"></p>
+    <label class="campo" id="campo-clave-actual"><span>Contraseña actual</span><input id="clave-actual" type="password" inputmode="numeric"></label>
+    <label class="campo"><span>Contraseña nueva (mínimo 4 dígitos)</span><input id="clave-nueva" type="password" inputmode="numeric"></label>
+    <label class="campo"><span>Repite la contraseña nueva</span><input id="clave-nueva2" type="password" inputmode="numeric"></label>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" id="clave-cancelar" type="button">Cancelar</button>
+      <button class="btn btn-principal" id="clave-guardar" type="button">Guardar</button>
     </div>
   </div>
 </div>
@@ -406,16 +443,16 @@
   </div>
 </div>
 
-<div class="modal" id="modal-cambiar-clave" role="dialog" aria-modal="true">
+<div class="modal" id="modal-codigo" role="dialog" aria-modal="true">
   <div class="modal-caja">
-    <h2 id="clave-titulo">Cambiar mi contraseña</h2>
-    <p class="nota" id="clave-texto"></p>
-    <label class="campo" id="campo-clave-actual"><span>Contraseña actual</span><input id="clave-actual" type="password" inputmode="numeric"></label>
-    <label class="campo"><span>Contraseña nueva (mínimo 4 dígitos)</span><input id="clave-nueva" type="password" inputmode="numeric"></label>
-    <label class="campo"><span>Repite la contraseña nueva</span><input id="clave-nueva2" type="password" inputmode="numeric"></label>
+    <h2 id="codigo-titulo">Código de recuperación</h2>
+    <p class="nota" id="codigo-texto"></p>
+    <p class="codigo-corto codigo-grande" id="codigo-valor">—</p>
+    <div class="datos-inicio" id="codigo-extra"></div>
+    <p class="nota">Anótalo o guárdalo fuera de la tableta. Es la única forma de volver a entrar si se olvida la contraseña del administrador.</p>
     <div class="form-botones">
-      <button class="btn btn-fantasma" id="clave-cancelar" type="button">Cancelar</button>
-      <button class="btn btn-principal" id="clave-guardar" type="button">Guardar</button>
+      <button class="btn btn-fantasma" id="codigo-descargar" type="button">Descargar en un archivo</button>
+      <button class="btn btn-principal" id="codigo-listo" type="button">Ya lo guardé</button>
     </div>
   </div>
 </div>

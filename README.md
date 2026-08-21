@@ -1,141 +1,151 @@
-# Tienda interna — versión 2
+# Tienda interna — versión 3
 
-Aplicativo para tableta: la persona entra con su identificación y una contraseña numérica, agrega productos con el lector de código de barras, con la cámara de la tableta, tocando la foto del producto o escribiendo su número corto, y elige entre pagar al momento o dejar el valor para descuento por nómina. El administrador configura productos con foto, verifica los pagos contra el soporte del banco y envía el reporte al correo de la empresa.
+Aplicativo para tableta. La persona entra con su identificación y una contraseña numérica, agrega productos con el lector de código de barras, con la cámara, tocando la foto o escribiendo el número corto, y confirma el pedido. **Todo se cobra por descuento de nómina**: no hay pagos con QR ni verificación de transferencias.
 
-No necesita servidor ni base de datos: son archivos estáticos que se publican en Netlify.
+El administrador configura productos y usuarios, marca los pedidos como descontados y saca los reportes en Excel y PDF, tanto detallados como resumidos. El envío de correos lo hace un flujo de n8n de la empresa, no el aplicativo.
+
+Son archivos estáticos: se publican en Netlify sin comando de compilación.
 
 ---
 
-## 1. Subir a GitHub
-
-Sube estos archivos respetando las carpetas:
+## 1. Archivos
 
 ```
 index.html
 styles.css
 app.js
 netlify.toml
-netlify/functions/enviar-reporte.js
-netlify/functions/enviar-codigo.js
+n8n/flujo-tienda.json
 README.md
 ```
 
-Desde la web de GitHub: **Add file › Upload files**, arrastra todo y confirma con **Commit changes**.
+La carpeta `n8n` no se publica: es solo el flujo para importar en tu servidor.
 
-## 2. Publicar en Netlify
+Ya no hay carpeta `netlify/functions`. Si venías de la versión anterior, **bórrala del repositorio** junto con las variables de entorno de Resend.
 
-1. netlify.com › **Add new site › Import an existing project**.
-2. Conecta GitHub y elige el repositorio.
-3. Deja el comando de compilación vacío; el directorio de publicación (`.`) ya viene en `netlify.toml`.
-4. **Deploy**. Abre la dirección en la tableta y usa "Agregar a pantalla de inicio".
+## 2. Publicar
 
-La cámara solo funciona sobre HTTPS, que es lo que entrega Netlify. Si pruebas en tu computador, ábrelo con `npx serve` en `localhost`, no con doble clic sobre el archivo.
+netlify.com › **Add new site › Import an existing project** › elige el repositorio › Deploy. Directorio de publicación `.`, sin comando de compilación. Abre la dirección en la tableta y usa "Agregar a pantalla de inicio".
+
+La cámara solo funciona sobre HTTPS. Para probar en el computador usa `npx serve` sobre `localhost`, no abras el archivo con doble clic.
 
 ## 3. Primer ingreso
 
-| Identificación | Contraseña |
-|---|---|
-| `0000` | `1234` |
+Identificación `0000`, contraseña `1234`. Al entrar te pedirá cambiar la contraseña y te mostrará el **código de recuperación** de 12 dígitos del administrador. Anótalo: es lo único que permite volver a entrar si se olvida la contraseña.
 
-Cámbiala de inmediato en **Administración › Usuarios › Editar**.
+## 4. Alta de usuarios
 
-La primera vez que se abre el aplicativo aparece un **código de recuperación** de 12 dígitos. Anótalo o descárgalo: es lo único que permite volver a entrar si se olvida la contraseña del administrador. Si ya venías usando una versión anterior, el código aparece la próxima vez que el administrador inicie sesión.
+En **Usuarios**, cada persona necesita nombre, identificación y correo. La contraseña viene precargada con la **genérica** que definas en Ajustes (`1234` por defecto) y la casilla *Pedirle que cambie la contraseña la primera vez que entre* está marcada.
 
-## 3.1 Contraseñas de los usuarios
+Cuando la persona ingresa con la genérica:
 
-Al crear cada persona en **Usuarios** defines:
+1. El aplicativo abre un modal que no se puede cerrar hasta que defina su propia contraseña. No acepta que sea igual a la genérica.
+2. Enseguida le muestra **Mi cuenta** para que confirme su correo. Ahí puede corregirlo y pulsar **Enviarme un correo de prueba** para comprobar que llega de verdad.
 
-- **Correo electrónico**: es lo que permite recuperar la contraseña sola. Debe ser del dominio de la empresa.
-- **Contraseña numérica**: viene precargada con la genérica que definas en **Ajustes** (`1234` por defecto), así puedes dar de alta a mucha gente rápido.
-- **Pedirle que cambie la contraseña la primera vez que entre**: marcado por defecto. Con esto, al ingresar con la genérica el aplicativo obliga a definir una propia antes de dejar comprar. En la tabla de usuarios esas cuentas aparecen marcadas como *Clave genérica*.
+Después puede volver a **Mi cuenta** cuando quiera, desde la barra superior, para revisar el correo o cambiar la contraseña.
 
-Cualquier persona puede cambiar su contraseña cuando quiera con el botón **Mi contraseña** de la barra superior; ahí sí se le pide la actual.
+Para cargar mucha gente de una vez, **Importar CSV** en Usuarios acepta columnas `identificacion;nombre;correo`. Todos entran con la contraseña genérica y con el cambio obligatorio activado.
 
-## 3.2 Recuperación por correo
+## 5. Recuperación de contraseña
 
-En la pantalla de ingreso, **Olvidé mi contraseña** pide la identificación y envía un código de 6 dígitos al correo registrado. El código vence en 15 minutos, sirve una sola vez y admite cinco intentos.
+En la pantalla de ingreso, **Olvidé mi contraseña** pide la identificación y envía un código de 6 dígitos al correo registrado. Vence en 15 minutos, sirve una vez y admite cinco intentos. En la misma casilla, los administradores pueden usar su código de 12 dígitos.
 
-Para que funcione hay que dejar lista la función `enviar-codigo` en Netlify:
+El código se valida contra la tableta, porque allí vive la base de datos: hay que pedirlo y escribirlo **en la misma tableta**.
 
-1. Crea una cuenta en resend.com y **verifica el dominio `lutec.com.co`** agregando los registros DNS que te indique. Sin ese paso el correo no sale, porque el remitente `proyectos@lutec.com.co` tiene que estar autorizado.
-2. En Netlify › **Site settings › Environment variables** agrega:
-   - `RESEND_API_KEY` — la clave de Resend
-   - `CORREO_ORIGEN` — `proyectos@lutec.com.co`
-   - `DOMINIO_PERMITIDO` — `lutec.com.co`
-3. En **Ajustes** deja marcada la casilla de recuperación por correo.
+## 6. Inventario
 
-La función solo acepta correos del dominio autorizado y limita a cinco envíos por dirección cada quince minutos, para que nadie use la dirección pública como máquina de spam.
+Cada producto tiene **existencias**, un nivel de aviso (*avisar cuando queden*) y la opción de **no dejar venderlo cuando llegue a cero**.
 
-Un detalle importante del diseño: el código viaja por correo, pero se valida contra la tableta, porque es allí donde vive la base de datos. Es decir, la persona debe pedir el código y escribirlo **en la misma tableta**. No sirve para entrar desde otro dispositivo.
+- Al confirmar un pedido, el aplicativo descuenta las unidades y deja registrado el movimiento.
+- En la tienda, los productos por acabarse muestran *Quedan N* sobre la foto; los agotados salen en gris y no se pueden agregar si tienen el bloqueo activo.
+- Al entrar a Administración aparece un aviso si hay algo agotado o por acabarse.
 
-## 3.3 Si se olvida la contraseña del administrador
+En la pestaña **Inventario** ves el total de unidades, el valor de la mercancía, cuántos productos están por acabarse y cuántos agotados. Desde ahí registras:
 
-Además del correo, cada administrador tiene un código de recuperación de 12 dígitos que sirve como respaldo si el correo falla:
+- **Entrada**: llegó mercancía, suma unidades.
+- **Ajuste**: después de un conteo físico, deja el producto en la cantidad exacta que escribas.
+- **Baja**: se dañó o se perdió, resta unidades.
 
-1. En la pantalla de ingreso toca **Olvidé mi contraseña**.
-2. Escribe la identificación del administrador y el código de recuperación de 12 dígitos en la casilla del código.
-3. Define la contraseña nueva.
-4. El aplicativo entrega un código de recuperación nuevo; el anterior deja de servir.
+Todo queda en la tabla de movimientos con fecha, cantidad, saldo, motivo y quién lo hizo. Se guardan los últimos 500 y se pueden descargar en Excel.
 
-Notas sobre este mecanismo:
+El inventario también se descarga en Excel y PDF, o se envía al correo con los dos adjuntos. Ese envío incluye además la lista de lo que hay que reponer.
 
-- El código de 12 dígitos solo sirve para cuentas de administrador. Los empleados usan el código que llega por correo, o le piden al administrador que se la cambie desde **Usuarios › Editar**.
-- El código se guarda cifrado, igual que las contraseñas, así que nadie puede leerlo desde el aplicativo. Si se pierde el código y también la contraseña, las únicas salidas son restaurar una copia desde **Respaldo** o borrar los datos del navegador para volver a empezar.
-- En **Usuarios**, el botón **Código nuevo** genera otro código para un administrador (útil si el anterior se filtró o se perdió). Requiere estar dentro con una cuenta de administrador.
-- Al crear un usuario con rol de administrador, el aplicativo muestra su código para que se lo entregues.
+Si vienes de una versión anterior, los productos existentes quedan en cero unidades y **sin bloqueo**, para que nada deje de venderse de un día para otro. A medida que cuentes cada producto, usa *Ajuste* y activa el bloqueo en su ficha.
 
-## 4. Puesta en marcha
+Para cargar existencias en masa, el CSV de productos ahora acepta las columnas `existencias` y `minimo`.
 
-1. **Ajustes**: nombre del punto de venta, correo de la empresa, código corto de pago (Nequi, Daviplata, transferencia) e imagen del QR.
-2. **Productos**: para cada uno defines
-   - **Número corto**: el que usa la gente en el teclado numérico (agua = `01`). Si lo dejas vacío se asigna solo.
-   - **Código de barras**: opcional, para el lector o la cámara.
-   - **Foto**: elegida del dispositivo o tomada con la cámara. Se comprime a 640 px para que no llene la memoria.
-   - Nombre, precio y categoría.
+## 7. Reportes
 
-   También puedes importar un CSV con columnas `numero;codigo;nombre;precio;categoria`.
-3. **Usuarios**: nombre, identificación y contraseña numérica de cada persona.
+En **Pedidos y reportes** filtras por fechas, estado o persona, y eliges el contenido:
 
-## 5. Cómo compra la gente
+- **Detallado**: una fila por producto, con identificación, nombre, pedido, fecha, producto, cantidad, precio, subtotal y estado. Ordenado por persona.
+- **Resumen**: una fila por persona con el total y lo pendiente de descuento. **Incluye a todos los usuarios activos aunque no hayan pedido nada**, ordenados de mayor a menor consumo, de modo que quienes compraron quedan arriba y los de cero al final en orden alfabético.
 
-- **Lector de código de barras**: los lectores USB o Bluetooth funcionan como un teclado. El cursor se mantiene en la casilla del escáner, así que solo hay que pasar el producto.
-- **Cámara de la tableta**: botón *Escanear con la cámara*. Usa el detector nativo del navegador y, donde no exista (iPad, Firefox), carga una librería de respaldo desde internet.
-- **Número corto**: botón *Buscar por número* abre el teclado numérico en pantalla.
-- **Foto del producto**: toca la tarjeta en la cuadrícula.
+Con cada uno puedes **Descargar Excel** (CSV con separador `;` y BOM, se abre directo en Excel), **Descargar PDF** o **Enviar al correo**, que manda ambos archivos adjuntos al correo configurado.
 
-Cada persona ve su propio historial con el botón **Mis compras**: qué compró, cuánto lleva pendiente de nómina y qué pagos están sin verificar.
+## 8. El flujo de n8n
 
-## 6. Verificación de pagos
+El aplicativo no envía correos: hace un POST con JSON a tu webhook y tu flujo se encarga del envío desde `proyectos@lutec.com.co`. No hay funciones de Netlify ni servicios de terceros de por medio.
 
-Como las apps bancarias no devuelven un código que el aplicativo pueda comprobar, el flujo es este:
+### Montarlo
 
-1. La persona paga con el QR o el código corto y toca **Ya pagué**. Puede escribir los últimos dígitos o la referencia, pero es opcional.
-2. El pedido queda en estado **Aprobado, sin verificar**.
-3. En **Administración › Verificar pagos** subes la captura o el PDF del movimiento bancario y contrastas contra la lista de pagos pendientes.
-4. Por cada pedido decides: **Verificar** (queda como verificado) o **Pasar a nómina** (cambia a descuento de nómina y entra al resumen del mes).
+1. En n8n: **Workflows › Import from File** y elige `n8n/flujo-tienda.json`.
+2. Abre el nodo **Webhook de la tienda** y en *Options › Allowed Origins (CORS)* reemplaza el valor por la dirección exacta de tu sitio, por ejemplo `https://tienda-lutec.netlify.app`. Sin esto el navegador rechaza la respuesta aunque el flujo se ejecute bien.
+3. Abre **Validar y preparar** y cambia las tres primeras líneas: el `TOKEN`, el `DOMINIO` y el máximo de correos por dirección por hora.
+4. Abre **Enviar correo**, conecta las credenciales SMTP de `proyectos@lutec.com.co` y confirma el remitente.
+5. Activa el flujo y copia la **URL de producción** del webhook.
+6. En la tableta, **Ajustes**: pega esa URL, escribe el mismo token y pulsa **Enviar un correo de prueba**.
 
-Solo el administrador puede cambiar estos estados, y cada cambio queda registrado con el nombre de quien lo hizo.
+### Qué hace el flujo
 
-## 7. Reporte al correo
+Rechaza la petición si el token no coincide, si el destinatario no es del dominio de la empresa o si esa dirección ya recibió demasiados correos en la última hora. Después arma el mensaje según el tipo, convierte los adjuntos de base64 a archivos y responde a la tableta.
 
-En **Pedidos** filtras por fechas, método, estado o persona y pulsas **Enviar al correo de la empresa**. Por defecto se descarga el CSV y se abre el correo con el resumen para que lo adjuntes.
+### Los mensajes que envía la tableta
 
-Para que se envíe solo, en Netlify › **Site settings › Environment variables** agrega:
+Todos traen `empresa`, `generado` y `tipo`.
 
-- `RESEND_API_KEY` — clave gratuita de resend.com
-- `CORREO_ORIGEN` — remitente verificado, por ejemplo `tienda@tuempresa.com`
+**`codigo`** — recuperación de contraseña
+```json
+{ "tipo":"codigo", "para":"persona@lutec.com.co", "nombre":"Nombre Apellido",
+  "codigo":"483920", "vigenciaMinutos":15 }
+```
 
-Luego activa la casilla correspondiente en **Ajustes**.
+**`prueba`** — comprobar que el correo llega
+```json
+{ "tipo":"prueba", "para":"persona@lutec.com.co", "nombre":"Nombre Apellido" }
+```
 
----
+**`reporte`** — consumo del período
+```json
+{ "tipo":"reporte", "para":"nomina@lutec.com.co",
+  "asunto":"Resumen de consumo por persona · ...",
+  "resumen":"texto plano con los totales",
+  "periodo":"Del 2026-08-01 al 2026-08-15",
+  "totales":{ "pedidos":42, "total":186000, "pendiente":94000 },
+  "adjuntos":[
+    { "nombre":"resumen_tienda.csv", "tipo":"text/csv", "contenidoBase64":"..." },
+    { "nombre":"resumen_tienda.pdf", "tipo":"application/pdf", "contenidoBase64":"..." }
+  ] }
+```
 
-## Lo que debes saber de esta versión
+**`inventario`** — corte de existencias, igual que el anterior más `porReponer`, un arreglo con los productos agotados o por acabarse.
 
-- **Los datos viven en la tableta.** Se guardan en el navegador del dispositivo. Si usas dos tabletas, cada una tendrá su propia información, y si alguien borra los datos del navegador se pierde todo. Descarga la copia de seguridad desde **Respaldo** al menos una vez por semana.
-- **El espacio es limitado**, unos 5 MB. Las fotos de producto y los soportes bancarios son lo que más pesa; en Respaldo ves cuánto llevas ocupado y puedes borrar soportes viejos y pedidos ya cerrados.
-- **Las contraseñas se guardan cifradas** con SHA-256 y una sal por usuario, pero al ser una app sin servidor cualquiera con acceso físico a la tableta puede leer el almacenamiento del navegador. Sirve para control interno, no para datos sensibles.
-- **No hay control de inventario ni facturación electrónica.** Es un registro de consumo para conciliar con nómina.
+### Seguridad de un webhook público
 
-## Siguiente versión
+La URL y el token quedan guardados en la tableta, así que quien tenga el dispositivo en la mano puede leerlos. Como la tableta no se mueve del sitio, la defensa más efectiva es **restringir el webhook a la IP pública de la oficina**, en el proxy que tengas delante de n8n (nginx, Traefik, Cloudflare). Con eso, un token filtrado no sirve desde afuera. Requiere que la oficina tenga IP fija; si es dinámica, sirve igual un rango o un DNS dinámico.
 
-El salto natural es mover los datos a Supabase (plan gratuito): misma interfaz, pero con base compartida entre varias tabletas, respaldo automático, fotos y soportes sin límite de 5 MB, y reportes desde cualquier computador. La estructura de esta versión (`usuarios`, `productos`, `pedidos`, `soportes`) se traslada casi tal cual a tablas.
+Sin ese filtro, el peor caso realista es que alguien mande códigos o reportes a buzones del dominio de la empresa: molesto, pero no da acceso a ninguna cuenta, porque el código se valida contra la tableta. El token, el filtro de dominio y el límite por hora que trae el flujo ya cubren ese escenario.
+
+Cambia el token cuando rote el personal con acceso al kiosco: se cambia en el nodo Code y en Ajustes, y listo.
+
+## 9. Lo que debes saber
+
+- **Los datos viven en la tableta**, en el almacenamiento del navegador. Dos tabletas son dos bases separadas. Descarga la copia desde **Respaldo** al menos una vez por semana.
+- **El espacio es de unos 5 MB.** Las fotos de producto se comprimen a 640 px; en Respaldo ves cuánto llevas ocupado y puedes borrar pedidos ya descontados.
+- **Las contraseñas y los códigos se guardan cifrados** con SHA-256 y sal por usuario, pero quien tenga la tableta puede leer el almacenamiento del navegador. Sirve para control interno.
+- **El token del webhook queda guardado en la tableta.** Trátalo como una llave de la casa, no como un secreto fuerte.
+- **El PDF se genera en el navegador** con jsPDF cargado desde una CDN. Sin internet no hay PDF; el Excel sí funciona sin conexión.
+
+## 10. Siguiente paso
+
+Con muchos usuarios, dos cosas van a apretar: el límite de 5 MB y el hecho de que cada tableta sea una isla. Mover los datos a Supabase resuelve ambas, permite consultar los reportes desde cualquier computador y hace que la recuperación por correo funcione desde cualquier dispositivo. La estructura actual (`usuarios`, `productos`, `pedidos`) se traslada casi tal cual a tablas.
