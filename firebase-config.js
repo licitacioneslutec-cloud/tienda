@@ -4,7 +4,7 @@
    Tus aplicaciones › lutectienda › Config. */
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyDC94IN1AaswoGzk3JRALYIuBqud02lljg",
+  apiKey: "AIzaSyDC94IN1AaswoGzk3JRALYluBqud02lljg",
   authDomain: "tiendalutec-24ba7.firebaseapp.com",
   databaseURL: "https://tiendalutec-24ba7-default-rtdb.firebaseio.com",
   projectId: "tiendalutec-24ba7",
