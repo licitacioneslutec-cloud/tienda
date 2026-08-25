@@ -316,3 +316,11 @@ img{max-width:100%; display:block}
 }
 .producto.agotado .producto-stock{background:var(--rojo)}
 #form-movimiento{margin-bottom:1rem}
+
+/* ── Pantalla de carga ── */
+.cargando{
+  position:fixed; inset:0; background:var(--papel); z-index:60;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; padding:2rem;
+}
+.cargando .rayas{width:min(320px,80vw)}
+.cargando p{color:var(--gris)}

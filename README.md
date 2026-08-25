@@ -1,151 +1,106 @@
-# Tienda interna — versión 3
+# Tienda interna — versión 4 (Firebase)
 
-Aplicativo para tableta. La persona entra con su identificación y una contraseña numérica, agrega productos con el lector de código de barras, con la cámara, tocando la foto o escribiendo el número corto, y confirma el pedido. **Todo se cobra por descuento de nómina**: no hay pagos con QR ni verificación de transferencias.
-
-El administrador configura productos y usuarios, marca los pedidos como descontados y saca los reportes en Excel y PDF, tanto detallados como resumidos. El envío de correos lo hace un flujo de n8n de la empresa, no el aplicativo.
-
-Son archivos estáticos: se publican en Netlify sin comando de compilación.
+Punto de venta interno. Cada persona entra desde su celular con su cédula y una clave de 4 dígitos, arma su pedido y confirma. Todo se cobra por **descuento de nómina**. Los datos viven en Firebase Realtime Database, así que todos los teléfonos ven lo mismo al instante: si alguien se lleva el último café, a los demás les aparece agotado.
 
 ---
 
-## 1. Archivos
+## Archivos del repositorio
 
 ```
 index.html
 styles.css
 app.js
+firebase-config.js
+manifest.json
+sw.js
 netlify.toml
-n8n/flujo-tienda.json
-README.md
+iconos/            (4 archivos png)
+firebase/          (no se publica: reglas y carga inicial)
+n8n/               (no se publica: el flujo de correo)
 ```
 
-La carpeta `n8n` no se publica: es solo el flujo para importar en tu servidor.
+---
 
-Ya no hay carpeta `netlify/functions`. Si venías de la versión anterior, **bórrala del repositorio** junto con las variables de entorno de Resend.
+## Paso 1 · Activar el acceso anónimo en Firebase
 
-## 2. Publicar
+Sin esto la aplicación no puede leer nada.
 
-netlify.com › **Add new site › Import an existing project** › elige el repositorio › Deploy. Directorio de publicación `.`, sin comando de compilación. Abre la dirección en la tableta y usa "Agregar a pantalla de inicio".
+1. Consola de Firebase › **Authentication** › Comenzar.
+2. Pestaña **Sign-in method** › **Anónimo** › Habilitar › Guardar.
 
-La cámara solo funciona sobre HTTPS. Para probar en el computador usa `npx serve` sobre `localhost`, no abras el archivo con doble clic.
+No le pide nada a la gente: la aplicación se identifica sola en segundo plano. Sirve para que las reglas puedan exigir que quien lee sea alguien que abrió la página, y no un rastreador automático.
 
-## 3. Primer ingreso
+## Paso 2 · Cargar el personal
 
-Identificación `0000`, contraseña `1234`. Al entrar te pedirá cambiar la contraseña y te mostrará el **código de recuperación** de 12 dígitos del administrador. Anótalo: es lo único que permite volver a entrar si se olvida la contraseña.
+1. Consola › **Realtime Database** › pestaña **Datos**.
+2. Menú de tres puntos (arriba a la derecha del nodo raíz) › **Importar JSON**.
+3. Elige `firebase/usuarios-inicial.json`.
 
-## 4. Alta de usuarios
+Quedan cargadas 62 personas: las 61 del archivo de nómina más el usuario `0000`. La clave de cada quien son **los últimos 4 dígitos de su cédula**, y a todos se les pide cambiarla al entrar. El archivo `firebase/claves-iniciales.csv` es la lista para repartir.
 
-En **Usuarios**, cada persona necesita nombre, identificación y correo. La contraseña viene precargada con la **genérica** que definas en Ajustes (`1234` por defecto) y la casilla *Pedirle que cambie la contraseña la primera vez que entre* está marcada.
+⚠️ Importar en la raíz **reemplaza toda la base**. Hazlo antes que nada.
 
-Cuando la persona ingresa con la genérica:
+## Paso 3 · Publicar las reglas
 
-1. El aplicativo abre un modal que no se puede cerrar hasta que defina su propia contraseña. No acepta que sea igual a la genérica.
-2. Enseguida le muestra **Mi cuenta** para que confirme su correo. Ahí puede corregirlo y pulsar **Enviarme un correo de prueba** para comprobar que llega de verdad.
+1. Consola › Realtime Database › pestaña **Reglas**.
+2. Borra lo que haya y pega el contenido de `firebase/database.rules.json`.
+3. **Publicar**.
 
-Después puede volver a **Mi cuenta** cuando quiera, desde la barra superior, para revisar el correo o cambiar la contraseña.
+Si no haces esto, Firebase deja la base abierta a todo internet y te manda correos de advertencia.
 
-Para cargar mucha gente de una vez, **Importar CSV** en Usuarios acepta columnas `identificacion;nombre;correo`. Todos entran con la contraseña genérica y con el cambio obligatorio activado.
+## Paso 4 · Subir el sitio a GitHub y publicarlo en Netlify
 
-## 5. Recuperación de contraseña
+Sube los archivos respetando las carpetas. Netlify reconstruye solo; no hay comando de compilación.
 
-En la pantalla de ingreso, **Olvidé mi contraseña** pide la identificación y envía un código de 6 dígitos al correo registrado. Vence en 15 minutos, sirve una vez y admite cinco intentos. En la misma casilla, los administradores pueden usar su código de 12 dígitos.
+Antes de subir, abre `firebase-config.js` y compara los valores con los de tu consola (Configuración del proyecto › Tus aplicaciones › lutectienda › Config). Los copié de una captura de pantalla, así que vale la pena verificar carácter por carácter, sobre todo el `apiKey`.
 
-El código se valida contra la tableta, porque allí vive la base de datos: hay que pedirlo y escribirlo **en la misma tableta**.
+## Paso 5 · Entrar como administrador
 
-## 6. Inventario
+Cédula `0000`, clave `1234`. Te pedirá cambiarla enseguida.
 
-Cada producto tiene **existencias**, un nivel de aviso (*avisar cuando queden*) y la opción de **no dejar venderlo cuando llegue a cero**.
+En **Ajustes** pon el nombre de la tienda, el correo que recibe los reportes, y la URL y el token de n8n si ya tienes el flujo montado.
 
-- Al confirmar un pedido, el aplicativo descuenta las unidades y deja registrado el movimiento.
-- En la tienda, los productos por acabarse muestran *Quedan N* sobre la foto; los agotados salen en gris y no se pueden agregar si tienen el bloqueo activo.
-- Al entrar a Administración aparece un aviso si hay algo agotado o por acabarse.
+En **Productos** carga lo que vendes: número corto, nombre, precio, foto y existencias iniciales.
 
-En la pestaña **Inventario** ves el total de unidades, el valor de la mercancía, cuántos productos están por acabarse y cuántos agotados. Desde ahí registras:
+## Paso 6 · Repartir a la gente
 
-- **Entrada**: llegó mercancía, suma unidades.
-- **Ajuste**: después de un conteo físico, deja el producto en la cantidad exacta que escribas.
-- **Baja**: se dañó o se perdió, resta unidades.
+Cada persona abre la dirección del sitio en su celular y la instala:
 
-Todo queda en la tabla de movimientos con fecha, cantidad, saldo, motivo y quién lo hizo. Se guardan los últimos 500 y se pueden descargar en Excel.
+- **Android / Chrome**: menú de tres puntos › *Instalar aplicación*.
+- **iPhone / Safari**: botón Compartir › *Añadir a pantalla de inicio*. Tiene que ser Safari.
 
-El inventario también se descarga en Excel y PDF, o se envía al correo con los dos adjuntos. Ese envío incluye además la lista de lo que hay que reponer.
+Entra con su cédula y los últimos 4 dígitos de la misma, define su clave, y ya puede comprar.
 
-Si vienes de una versión anterior, los productos existentes quedan en cero unidades y **sin bloqueo**, para que nada deje de venderse de un día para otro. A medida que cuentes cada producto, usa *Ajuste* y activa el bloqueo en su ficha.
+---
 
-Para cargar existencias en masa, el CSV de productos ahora acepta las columnas `existencias` y `minimo`.
+## Cómo funciona el día a día
 
-## 7. Reportes
+**Para la gente.** Abre la app, busca el producto por nombre, toca su foto, o lo escanea con la cámara, y confirma. Ve lo que lleva pendiente de descuento en *Mis compras*.
 
-En **Pedidos y reportes** filtras por fechas, estado o persona, y eliges el contenido:
+**Para el administrador.** La pestaña Administración solo la ve quien tenga rol de admin. Ahí están productos, inventario, usuarios, pedidos y reportes.
 
-- **Detallado**: una fila por producto, con identificación, nombre, pedido, fecha, producto, cantidad, precio, subtotal y estado. Ordenado por persona.
-- **Resumen**: una fila por persona con el total y lo pendiente de descuento. **Incluye a todos los usuarios activos aunque no hayan pedido nada**, ordenados de mayor a menor consumo, de modo que quienes compraron quedan arriba y los de cero al final en orden alfabético.
+**Inventario.** Cada venta descuenta unidades. Si dos personas compran el último producto al mismo tiempo, la base resuelve el conflicto y una de las dos recibe el aviso de que se agotó; nadie queda con el conteo torcido.
 
-Con cada uno puedes **Descargar Excel** (CSV con separador `;` y BOM, se abre directo en Excel), **Descargar PDF** o **Enviar al correo**, que manda ambos archivos adjuntos al correo configurado.
+**Reportes.** Filtras por fecha, estado o persona, y eliges entre el detallado (qué pidió cada quien) y el resumen (total por persona, incluyendo a quienes no compraron nada). Los dos salen en Excel y PDF, o se envían por correo a través de n8n.
 
-## 8. El flujo de n8n
+**Si alguien olvida su clave.** El administrador entra a Usuarios y pulsa *Reiniciar clave*: vuelve a los últimos 4 dígitos de la cédula y se le pide cambiarla. No hace falta correo.
 
-El aplicativo no envía correos: hace un POST con JSON a tu webhook y tu flujo se encarga del envío desde `proyectos@lutec.com.co`. No hay funciones de Netlify ni servicios de terceros de por medio.
+---
 
-### Montarlo
+## Lo que debes tener claro
 
-1. En n8n: **Workflows › Import from File** y elige `n8n/flujo-tienda.json`.
-2. Abre el nodo **Webhook de la tienda** y en *Options › Allowed Origins (CORS)* reemplaza el valor por la dirección exacta de tu sitio, por ejemplo `https://tienda-lutec.netlify.app`. Sin esto el navegador rechaza la respuesta aunque el flujo se ejecute bien.
-3. Abre **Validar y preparar** y cambia las tres primeras líneas: el `TOKEN`, el `DOMINIO` y el máximo de correos por dirección por hora.
-4. Abre **Enviar correo**, conecta las credenciales SMTP de `proyectos@lutec.com.co` y confirma el remitente.
-5. Activa el flujo y copia la **URL de producción** del webhook.
-6. En la tableta, **Ajustes**: pega esa URL, escribe el mismo token y pulsa **Enviar un correo de prueba**.
+**Cualquiera que abra el sitio puede leer la base.** Elegiste login propio con reglas abiertas a quien esté autenticado, y la autenticación es anónima, así que basta con abrir la página para obtener acceso de lectura. Un empleado con curiosidad y conocimientos podría ver las 61 cédulas y el consumo de todos. Las reglas frenan a los rastreadores automáticos que buscan bases de Firebase sueltas, que es la amenaza más común, pero no a alguien de adentro. No pongas ahí nada más sensible que esto.
 
-### Qué hace el flujo
+**Las claves sí están protegidas.** Se guardan cifradas con SHA-256 y una sal distinta por persona. Ni yo ni nadie puede leerlas desde la base.
 
-Rechaza la petición si el token no coincide, si el destinatario no es del dominio de la empresa o si esa dirección ya recibió demasiados correos en la última hora. Después arma el mensaje según el tipo, convierte los adjuntos de base64 a archivos y responde a la tableta.
+**Hace falta internet.** A diferencia de la versión de la tableta, ahora los datos están en la nube. Sin señal, la app abre pero no deja comprar.
 
-### Los mensajes que envía la tableta
+**El plan gratuito alcanza de sobra.** Con 61 personas y un consumo normal, el gasto de datos queda muy por debajo del límite. Las fotos de producto son lo que más pesa, por eso se comprimen a 480 píxeles y se guardan aparte, para que la lista cargue rápido en el celular.
 
-Todos traen `empresa`, `generado` y `tipo`.
+**El escaneo con cámara depende del teléfono.** En Android funciona de forma nativa. En iPhone se apoya en una librería externa y es más lento; por eso el número corto y la búsqueda por nombre siguen siendo el camino principal.
 
-**`codigo`** — recuperación de contraseña
-```json
-{ "tipo":"codigo", "para":"persona@lutec.com.co", "nombre":"Nombre Apellido",
-  "codigo":"483920", "vigenciaMinutos":15 }
-```
+---
 
-**`prueba`** — comprobar que el correo llega
-```json
-{ "tipo":"prueba", "para":"persona@lutec.com.co", "nombre":"Nombre Apellido" }
-```
+## Siguiente mejora, cuando quieras
 
-**`reporte`** — consumo del período
-```json
-{ "tipo":"reporte", "para":"nomina@lutec.com.co",
-  "asunto":"Resumen de consumo por persona · ...",
-  "resumen":"texto plano con los totales",
-  "periodo":"Del 2026-08-01 al 2026-08-15",
-  "totales":{ "pedidos":42, "total":186000, "pendiente":94000 },
-  "adjuntos":[
-    { "nombre":"resumen_tienda.csv", "tipo":"text/csv", "contenidoBase64":"..." },
-    { "nombre":"resumen_tienda.pdf", "tipo":"application/pdf", "contenidoBase64":"..." }
-  ] }
-```
-
-**`inventario`** — corte de existencias, igual que el anterior más `porReponer`, un arreglo con los productos agotados o por acabarse.
-
-### Seguridad de un webhook público
-
-La URL y el token quedan guardados en la tableta, así que quien tenga el dispositivo en la mano puede leerlos. Como la tableta no se mueve del sitio, la defensa más efectiva es **restringir el webhook a la IP pública de la oficina**, en el proxy que tengas delante de n8n (nginx, Traefik, Cloudflare). Con eso, un token filtrado no sirve desde afuera. Requiere que la oficina tenga IP fija; si es dinámica, sirve igual un rango o un DNS dinámico.
-
-Sin ese filtro, el peor caso realista es que alguien mande códigos o reportes a buzones del dominio de la empresa: molesto, pero no da acceso a ninguna cuenta, porque el código se valida contra la tableta. El token, el filtro de dominio y el límite por hora que trae el flujo ya cubren ese escenario.
-
-Cambia el token cuando rote el personal con acceso al kiosco: se cambia en el nodo Code y en Ajustes, y listo.
-
-## 9. Lo que debes saber
-
-- **Los datos viven en la tableta**, en el almacenamiento del navegador. Dos tabletas son dos bases separadas. Descarga la copia desde **Respaldo** al menos una vez por semana.
-- **El espacio es de unos 5 MB.** Las fotos de producto se comprimen a 640 px; en Respaldo ves cuánto llevas ocupado y puedes borrar pedidos ya descontados.
-- **Las contraseñas y los códigos se guardan cifrados** con SHA-256 y sal por usuario, pero quien tenga la tableta puede leer el almacenamiento del navegador. Sirve para control interno.
-- **El token del webhook queda guardado en la tableta.** Trátalo como una llave de la casa, no como un secreto fuerte.
-- **El PDF se genera en el navegador** con jsPDF cargado desde una CDN. Sin internet no hay PDF; el Excel sí funciona sin conexión.
-
-## 10. Siguiente paso
-
-Con muchos usuarios, dos cosas van a apretar: el límite de 5 MB y el hecho de que cada tableta sea una isla. Mover los datos a Supabase resuelve ambas, permite consultar los reportes desde cualquier computador y hace que la recuperación por correo funcione desde cualquier dispositivo. La estructura actual (`usuarios`, `productos`, `pedidos`) se traslada casi tal cual a tablas.
+Pasar a Firebase Authentication con cuentas reales. La persona seguiría escribiendo 4 dígitos, pero por dentro el aplicativo les añadiría un sufijo fijo para cumplir el mínimo de 6 caracteres de Firebase. Con eso las reglas podrían decir "cada quien solo lee sus propios pedidos" y la lista de personal quedaría reservada al administrador. Es la única forma de cerrar del todo el punto de la lectura abierta.
