@@ -1,0 +1,44 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "usuarios": {
+      ".read": "auth != null",
+      "$cedula": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['nombre','cedula','rol'])"
+      }
+    },
+
+    "productos": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "fotos": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "pedidos": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["cedula", "creado"],
+      "$id": {
+        ".validate": "newData.hasChildren(['cedula','total','creado']) || !newData.exists()"
+      }
+    },
+
+    "movimientos": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["fecha"]
+    }
+  }
+}
