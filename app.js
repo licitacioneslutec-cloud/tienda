@@ -514,6 +514,92 @@ $('#btn-mis-compras').addEventListener('click', () => {
   abrirModal('modal-historial');
 });
 
+/* ── Recuperación por correo ───────────────────────────────── */
+const enmascarar = c => String(c || '').replace(/^(.).*(@.*)$/, (m, a, b) => a + '•••' + b);
+const soloDigitos = s => String(s ?? '').replace(/\D/g, '');
+
+async function enviarCodigoCorreo(cedula) {
+  const snap = await get(ref(db, 'usuarios/' + cedula));
+  const u = snap.val();
+  if (!u || !u.correo) return;
+
+  const codigo = String(Math.floor(100000 + Math.random() * 900000));
+  const sal = uid();
+  const otp = { hash: await hashClave(codigo, sal), sal, expira: Date.now() + 15 * 60 * 1000, intentos: 0 };
+
+  await llamarWebhook({
+    tipo: 'codigo',
+    para: u.correo,
+    nombre: u.nombre,
+    codigo,
+    vigenciaMinutos: 15
+  });
+
+  await actualizar('usuarios/' + cedula, { otp });
+  return u;
+}
+
+$('#btn-olvide').addEventListener('click', () => {
+  ['#rec-cedula', '#rec-codigo', '#rec-clave', '#rec-clave2'].forEach(s => $(s).value = '');
+  $('#rec-aviso-envio').textContent = '';
+  abrirModal('modal-recuperar');
+});
+
+$('#rec-enviar').addEventListener('click', async () => {
+  const cedula = $('#rec-cedula').value.trim();
+  if (!cedula) return aviso('Escribe tu número de cédula.', 'error');
+
+  const generico = 'Si esa cédula está registrada con un correo, allí llegará el código. Vence en 15 minutos.';
+  $('#rec-aviso-envio').textContent = 'Enviando…';
+
+  try {
+    const u = await enviarCodigoCorreo(cedula);
+    if (u) {
+      $('#rec-aviso-envio').textContent = `Código enviado a ${enmascarar(u.correo)}. Vence en 15 minutos.`;
+    } else {
+      $('#rec-aviso-envio').textContent = generico;
+    }
+  } catch (err) {
+    $('#rec-aviso-envio').textContent = 'No se pudo enviar: ' + err.message;
+  }
+});
+
+$('#rec-confirmar').addEventListener('click', async () => {
+  const cedula = $('#rec-cedula').value.trim();
+  const codigo = soloDigitos($('#rec-codigo').value);
+  const clave  = $('#rec-clave').value.trim();
+  const clave2 = $('#rec-clave2').value.trim();
+
+  if (clave.length < 4) return aviso('La nueva clave necesita al menos 4 dígitos.', 'error');
+  if (clave !== clave2) return aviso('Las dos claves no coinciden.', 'error');
+
+  let ficha;
+  try {
+    ficha = (await get(ref(db, 'usuarios/' + cedula))).val();
+  } catch { return aviso('No hay conexión con la base.', 'error'); }
+
+  if (!ficha || ficha.activo === false) return aviso('La cédula o el código no coinciden.', 'error');
+
+  let valido = false;
+  if (ficha.otp && Date.now() < ficha.otp.expira && (ficha.otp.intentos || 0) < 5) {
+    if (await hashClave(codigo, ficha.otp.sal) === ficha.otp.hash) {
+      valido = true;
+    } else {
+      await actualizar('usuarios/' + cedula, { 'otp/intentos': (ficha.otp.intentos || 0) + 1 });
+    }
+  }
+
+  if (!valido) return aviso('La cédula o el código no coinciden.', 'error');
+
+  const sal = uid();
+  await actualizar('usuarios/' + cedula, {
+    sal, clave: await hashClave(clave, sal), debeCambiar: false, otp: null
+  });
+
+  cerrarModal('modal-recuperar');
+  aviso('Clave cambiada. Ya puedes entrar.', 'ok');
+});
+
 /* ── Cambio de clave ─────────────────────────────────────── */
 let cambioObligatorio = false;
 

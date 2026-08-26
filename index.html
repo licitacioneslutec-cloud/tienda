@@ -42,6 +42,7 @@
       </label>
       <div class="teclado" id="teclado-login"></div>
       <button class="btn btn-principal btn-grande" type="submit">Entrar</button>
+      <button class="btn btn-texto" type="button" id="btn-olvide">Olvidé mi clave</button>
       <p class="nota">La primera vez, tu clave son los últimos 4 dígitos de tu cédula.</p>
     </form>
   </div>
@@ -367,6 +368,31 @@
     <div class="resumen" id="historial-resumen"></div>
     <div class="tabla-envoltura"><table class="tabla" id="tabla-historial"></table></div>
     <div class="form-botones"><button class="btn btn-principal btn-grande" data-cerrar>Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-cambiar-clave" role="dialog" aria-modal="true">
+
+<div class="modal" id="modal-recuperar" role="dialog" aria-modal="true">
+  <div class="modal-caja">
+    <h2>Recuperar el acceso</h2>
+    <p class="nota">Te enviamos un código de 6 dígitos al correo que tienes registrado. Vence en 15 minutos.</p>
+
+    <label class="campo"><span>Número de cédula</span><input id="rec-cedula" inputmode="numeric"></label>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" id="rec-enviar" type="button">Enviarme un código al correo</button>
+    </div>
+    <p class="nota" id="rec-aviso-envio"></p>
+
+    <hr class="separador">
+
+    <label class="campo"><span>Código recibido</span><input id="rec-codigo" inputmode="numeric" placeholder="000000"></label>
+    <label class="campo"><span>Nueva clave (4 dígitos o más)</span><input id="rec-clave" type="password" inputmode="numeric"></label>
+    <label class="campo"><span>Repite la nueva clave</span><input id="rec-clave2" type="password" inputmode="numeric"></label>
+    <div class="form-botones">
+      <button class="btn btn-fantasma" data-cerrar>Volver</button>
+      <button class="btn btn-principal" id="rec-confirmar" type="button">Cambiar clave</button>
+    </div>
   </div>
 </div>
 
